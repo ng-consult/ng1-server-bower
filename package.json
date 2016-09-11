@@ -1,0 +1,24 @@
+{
+  "name": "angular.js-server-bower",
+  "author": "Antoine LUCAS <antoine.lucas.australia@gmail.com>",
+  "scripts": {},
+  "main": "js/build.js",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a-lucas/angular.js-server-bower.git"
+  },
+  "scripts": {
+    "build": "webpack && uglifyjs ./dest/angular.js-server.js -c -m -o ./dest/angular.js-server.min.js --source-map ./dest/angular.js-server.min.js.map"
+  },
+  "engines": {
+    "node": ">=5.12.0",
+    "npm": ">=3.8.6"
+  },
+  "dependencies": {
+    "ts-loader": "^0.8.2",
+    "uglify-js": "^2.7.3"
+  },
+  "devDependencies": {}
+}
