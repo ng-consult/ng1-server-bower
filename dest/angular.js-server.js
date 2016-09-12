@@ -52,7 +52,66 @@
 	var q_1 = __webpack_require__(2);
 	angular.module('server', [])
 	    .provider('$engineQueue', engineQueue_1.default)
-	    .provider('$q', q_1.default);
+	    .provider('$q', q_1.default)
+	    .config(function ($provide) {
+	    if (typeof window.onServer !== 'undefined' && window.onServer === true) {
+	        $provide.decorator('$exceptionHandler', function ($delegate, $log, $window) {
+	            var errorHandler = function (error, cause) {
+	                var err = new Error();
+	                var stack = err.stack;
+	                var errorEvent = new $window.CustomEvent('ServerExceptionHandler');
+	                errorEvent.details = {
+	                    exception: error,
+	                    cause: cause,
+	                    err: err.stack
+	                };
+	                $window.dispatchEvent(errorEvent);
+	                $delegate(error, cause);
+	            };
+	            return errorHandler;
+	        });
+	        if (typeof window.fs !== 'undefined' && typeof window.logConfig !== 'undefined') {
+	            var fs_1 = window.fs;
+	            var config_1 = window.logConfig;
+	            $provide.decorator('$log', [
+	                '$delegate',
+	                function logDecorator($delegate) {
+	                    var myLog = {
+	                        warn: function (msg) {
+	                            log(msg, 'warn');
+	                        },
+	                        error: function (msg) {
+	                            log(msg, 'error');
+	                        },
+	                        info: function (msg) {
+	                            log(msg, 'info');
+	                        },
+	                        debug: function (msg) {
+	                            log(msg, 'debug');
+	                        },
+	                        log: function (msg) {
+	                            log(msg, 'log');
+	                        }
+	                    };
+	                    var log = function (msg, type) {
+	                        var date = new Date();
+	                        var logMsg = date + " -> " + msg + '\n';
+	                        if (config_1[type]['stack'] === true) {
+	                            var err = new Error();
+	                            var stack = err.stack;
+	                            logMsg += stack + '\n\n';
+	                        }
+	                        fs_1.appendFile(config_1[type]['path'], logMsg, function (err) {
+	                            if (err)
+	                                throw err;
+	                        });
+	                    };
+	                    return myLog;
+	                }
+	            ]);
+	        }
+	    }
+	});
 
 
 /***/ },
