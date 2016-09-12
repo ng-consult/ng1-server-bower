@@ -5,7 +5,7 @@
     "build": "webpack && uglifyjs ./dest/angular.js-server.js -c -m -o ./dest/angular.js-server.min.js --source-map ./dest/angular.js-server.min.js.map"
   },
   "main": "js/build.js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "repository": {
     "type": "git",
