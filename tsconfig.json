@@ -2,11 +2,16 @@
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
-        "sourceMap": true
+        "allowUnreachableCode": false,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "declaration": false,
+        "diagnostics": true,
+        "listFiles": true,
+        "pretty": true,
+        "watch": true
     },
     "files": [
-        "ts/provider/engineQueue.ts",
-        "ts/provider/q.ts",
-        "ts/index.ts"
+        "src/index.ts"
     ]
 }

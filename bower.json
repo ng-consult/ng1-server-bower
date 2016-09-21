@@ -1,7 +1,7 @@
 {
   "name": "angular.js-server",
-  "description": "This is the client module to include in order to make the server side renderer work with your application ( https://github.com/a-lucas/angular.js-server/ )",
-  "main": "dest/angular.js-server.js",
+  "description": "Angular module to include for server side renderering with your application ( https://github.com/a-lucas/angular.js-server/ )",
+  "main": "dist/angular.js-server.js",
   "authors": [
     "Antoine LUCAS <antoine.lucas.australia@gmail.com>"
   ],
@@ -22,5 +22,10 @@
     "test",
     "tests",
     "ts"
-  ]
+  ],
+  "devDependencies": {
+    "angular": "^1.5.8",
+    "angular-mocks": "^1.5.8",
+    "angular-resource": "^1.5.8"
+  }
 }

@@ -1,17 +1,22 @@
-/**
- * Created by antoine on 11/09/16.
- */
+var path = require('path');
+
 module.exports = {
-    entry: './ts/index.ts',
+    entry: './src/index.ts',
     output: {
-        filename: 'dest/angular.js-server.js'
+        filename: 'dist/angular.js-server.js'
     },
+    devtool: 'source-map',
     resolve: {
-        extensions: ['', '.webpack.js', '.web.js', '.ts', '.js']
+        root: path.resolve('./src'),
+        extensions: ['', '.ts']
     },
+    plugins: [
+        //new webpack.optimize.UglifyJsPlugin({ minimize: true })
+    ],
+    debug: true,
     module: {
         loaders: [
             { test: /\.ts$/, loader: 'ts-loader' }
         ]
     }
-}
+};
