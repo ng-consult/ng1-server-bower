@@ -1,6 +1,6 @@
 import {IEngineQueue, ICounterFactory} from './../interfaces/definitions';
 
-export default function CounterFactory(  $rootScope, $log, engineQueue: IEngineQueue,  TimeoutValue): ICounterFactory {
+const CounterFactory = (  $rootScope, $log, engineQueue: IEngineQueue,  TimeoutValue): ICounterFactory => {
     const counters = {};
 
     /**
@@ -114,3 +114,4 @@ class Counter {
     };
 }
 
+export default CounterFactory;

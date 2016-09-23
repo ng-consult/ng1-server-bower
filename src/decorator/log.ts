@@ -1,6 +1,6 @@
 'use strict';
 
-const logDecorator = ($delegate) =>{
+const logDecorator = ($delegate, $window) =>{
 
     if(typeof window['onServer'] !== 'undefined' && window['onServer'] === true && typeof window['fs'] !== 'undefined' && typeof window['logConfig'] !== 'undefined') {
 
@@ -12,8 +12,10 @@ const logDecorator = ($delegate) =>{
             return date + " -> " + msg.join(' ') + '\n';
         };
 
-        let log = (type:string, msg:string ) => {
+        let log = (type:string, ...args ) => {
+
             if (config[type].enabled) {
+                let msg = formatMsg(args);
                 if (config[type].stack === true) {
                     var err = new Error();
                     var stack = err['stack'];
@@ -22,42 +24,33 @@ const logDecorator = ($delegate) =>{
                 fs.appendFile(config.dir + '/' + type, msg, (err) => {
                     if (err) throw err;
                 });
+            } else {
+                $delegate[type].apply($window.console, args)
             }
         };
 
-        var getArgs = ( ...args: any[]) => {
-            var values = [];
-            args.forEach(function(item) {
-                if(typeof item === 'string' ) {
-                    values.push(item);
-                }
-                else if( typeof item.toString === 'function') {
-                    values.push(item.toString())
-                }
-            });
-        };
         var timer = Date.now();
         var myLog = {
             formatMsg: formatMsg,
             warn: function (...args) {
-                console.warn.apply(null, args);
-                log('warn', formatMsg(args));
+                //console.warn.apply(null, args);
+                log('warn', args);
             },
             error: function (...args) {
-                console.error.apply(null, args);
-                log('error', formatMsg(args));
+                //console.error.apply(null, args);
+                log('error', args);
             },
             info: function (...args) {
-                console.info.apply(null, args);
-                log('info', formatMsg(args));
+                //console.info.apply(null, args);
+                log('info', args);
             },
             debug: function (...args) {
-                console.debug.apply(null, args);
-                log('debug', formatMsg(args));
+                //console.debug.apply(null, args);
+                log('debug', args);
             },
             log: function (...args) {
-                console.log.apply(null, args);
-                log('log', formatMsg(args));
+                //console.log.apply(null, args);
+                log('log', args);
             },
             dev: function(...args) {
                 return;
