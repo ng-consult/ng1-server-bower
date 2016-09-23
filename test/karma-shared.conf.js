@@ -1,4 +1,3 @@
-var path = require('path');
 
 module.exports = function () {
     return {
@@ -9,13 +8,12 @@ module.exports = function () {
         customLaunchers: {
             Chrome_travis_ci: {
                 base: 'Chrome',
-                flags: ['--no-sandbox']
+                flags: ['--headless']
             }
         },
         preprocessors: {
             '**/*.json': ['json'],
-            'dist/angular.js-server.js': ['coverage'],
-            //'src/index.ts': ['webpack', 'sourcemap']
+            'dist/angular.js-server.js': ['coverage']
         },
         coverageReporter: {
             instrumenter: {
@@ -26,36 +24,6 @@ module.exports = function () {
             subdir: '.'
         },
         loggers: [{ type: 'console'}],
-        webpack: {
-            entry: 'src/index.ts',
-            output: {
-                filename: 'dist/angular.js-server.js'
-            },
-            devtool: 'source-map',
-            resolve: {
-                root: path.resolve('./src'),
-                extensions: ['', '.ts']
-            },
-            plugins: [
-                //new webpack.optimize.UglifyJsPlugin({ minimize: true })
-            ],
-            debug: true,
-            module: {
-                loaders: [
-                    { test: /\.ts$/, loader: 'ts-loader' }
-                ]
-            }
-        },
-        webpackMiddleware: {
-            // webpack-dev-middleware configuration
-            // i.e.
-            noInfo: true,
-            // and use stats to turn off verbose output
-            stats: {
-                // options i.e.
-                chunks: false
-            }
-        },
         files: [
             //3rd Party Code
             'bower_components/angular/angular.js',
@@ -65,7 +33,7 @@ module.exports = function () {
 
             //mocha stuff
             'test/mocha.conf.js',
-            //'src/index.ts',
+
             'dist/angular.js-server.js',
             {
                 pattern:'dist/angular.js-server.js.map',
@@ -77,8 +45,7 @@ module.exports = function () {
                 served: true,
                 wacthed: false,
                 included: true
-            },
-            'test/unit/*.js'
+            }
         ]
     }
 };

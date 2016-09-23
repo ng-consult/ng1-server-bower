@@ -1,11 +1,14 @@
 'use strict';
 
-const HttpInterceptorQueue = ($q, $window, $rootScope, TimeoutValue, counter) => {
+const HttpInterceptorQueue = ($q, $window, $rootScope, $log, TimeoutValue, counter) => {
+
+    $log.dev('HttpInterceptor', 'instanciated', this);
 
     const hCounter = counter.create('http');
 
     return {
         request:  (config) => {
+            $log.dev('httpRequest', config.url);
             hCounter.incr();
             return $q.when(config);
         },
@@ -14,10 +17,12 @@ const HttpInterceptorQueue = ($q, $window, $rootScope, TimeoutValue, counter) =>
             return $q.reject(rejection);
         },
         response:  (response) =>{
+            $log.dev('httpResponse', response.config.url);
             hCounter.decr();
             return $q.when(response);
         },
         responseError: (response) => {
+            $log.dev('httpResponse', response.config.url);
             hCounter.decr();
             return $q.reject(response);
         }

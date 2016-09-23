@@ -8,5 +8,6 @@ export interface ICounterFactory {
     create: Function,
     incr: Function,
     decr: Function,
-    getCount: Function
+    getCount: Function,
+    touch: Function
 }
