@@ -1,69 +1,24 @@
 
+var be = before(window);
+
+
 describe('Server side Enabled - Custom app definition', function() {
-
-
-    var files = {};
-
-    beforeEach(function() {
-        window.onServer = true;
-        window.fs = {
-            appendFile: function (path, msg, cb) {
-                files[path] = msg;
-            }
-        };
-        window.logConfig = {
-            dir: '/var/log/angular',
-            warn: {
-                enabled: true,
-                stack: false
-            },
-            log: {
-                enabled: true,
-                stack: false
-            },
-            debug: {
-                enabled: false,
-                stack: false
-            },
-            error: {
-                enabled: true,
-                stack: false
-            },
-            info: {
-                enabled: false,
-                stack: false
-            }
-        };
-
-    });
-
-
+    
     describe('A ng-model gets updated app', function () {
-        var $componentController, $httpBackend, $rootScope;
 
-        beforeEach(function () {
-            var app = angular.module('appNgModel', ['server'])
-                .component('appComponent', {
-                    template: "<input type='text' ng-model='item'/>",
-                    controller: function () {
-                        var ctrl = this;
-                        this.item = 'text';
-                    },
-                    bindings: {}
-                });
-            angular.mock.module('appNgModel');
-        });
+        var app = angular.module('appNgModel', ['server'])
+            .component('appComponent', {
+                template: "<input type='text' ng-model='item'/>",
+                controller: function () {
+                    var ctrl = this;
+                    this.item = 'text';
+                },
+                bindings: {}
+            });
 
-        beforeEach(inject(function (_$componentController_, _$rootScope_, _$httpBackend_) {
-            $componentController = _$componentController_;
-            $rootScope = _$rootScope_;
-            $httpBackend = _$httpBackend_;
-
-        }));
-
-        afterEach(function () {
-            $httpBackend.verifyNoOutstandingExpectation();
-            $httpBackend.verifyNoOutstandingRequest();
+        beforeEach(function() {
+            be.server('appNgModel');
+            be.injectServer();
         });
 
         it('The Idle event should be caught after the ng-model value changes', function (done) {
@@ -75,11 +30,7 @@ describe('Server side Enabled - Custom app definition', function() {
                 done();
             });
 
-
             var ctrl = $componentController('appComponent');
-            $httpBackend.when('GET', '/someInexistantValue').respond({});
-            $httpBackend.flush();
-            $rootScope.$digest();
 
             expect(ctrl.item).to.eql('text');
 
@@ -87,7 +38,8 @@ describe('Server side Enabled - Custom app definition', function() {
 
             modelChanged = true;
 
-            $rootScope.$digest();
+            $timeout.flush(TimeoutValue);
+
         });
 
         it('The Idle event should be caught after the ng-model value changes 1000 times', function (done) {
@@ -100,10 +52,9 @@ describe('Server side Enabled - Custom app definition', function() {
             });
 
             var ctrl = $componentController('appComponent');
-            $httpBackend.when('GET', '/someInexistantValue').respond({});
-            $httpBackend.flush();
-            $rootScope.$digest();
 
+
+            $timeout.flush(TimeoutValue);
 
             for (var i = 0; i < 1000; i++) {
                 ctrl.item = 'changed' + i;
@@ -116,67 +67,54 @@ describe('Server side Enabled - Custom app definition', function() {
     });
 
     describe('Component app that loads a failed reuqest', function() {
-        var $httpBackend,
-            $componentController,
-            $rootScope;
+        var app = angular.module('appJSON', ['server'])
+            .component('appComponent', {
+                template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
+                controller: function ($http) {
+                    var ctrl = this;
+                    this.list = [];
+                    this.error1;
+                    this.error2;
+                    this.getList = function () {
+                        $http.get('/big.json').then(function (list) {
+                            ctrl.list = list.data;
+                        }, function(err) {
+                            ctrl.error1 = err.status;
+                        });
+                    };
 
-        beforeEach(function () {
-            var app = angular.module('appJSON', ['server'])
-                .component('appComponent', {
-                    template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
-                    controller: function ($http) {
-                        var ctrl = this;
-                        this.list = [];
-                        this.error1;
-                        this.error2;
-                        this.getList = function () {
-                            $http.get('/big.json').then(function (list) {
-                                ctrl.list = list.data;
-                            }, function(err) {
-                                ctrl.error1 = err.status;
-                            });
-                        };
+                },
+                bindings: {}
+            });
 
-                    },
-                    bindings: {}
-                });
-
-
-            angular.mock.module('appJSON');
+        beforeEach(function() {
+            be.server('appJSON');
+            be.injectServer();
         });
-
-        beforeEach(inject(function (_$rootScope_, _$httpBackend_, _$componentController_) {
-            $httpBackend = _$httpBackend_;
-            $componentController = _$componentController_;
-            $rootScope = _$rootScope_.$new();
-
-        }));
 
         after(function () {
             $httpBackend.verifyNoOutstandingExpectation();
             $httpBackend.verifyNoOutstandingRequest();
         });
 
-
         it('Should trigger a Idle event after the http loads ok - 1000ms', function (done) {
             var jsonFailed = false;
-            $httpBackend.when('GET', '/someInexistantValue').respond({});
-            $httpBackend.flush();
-            $rootScope.$digest();
 
             window.addEventListener('Idle', function (event) {
                 expect(jsonFailed).to.be.ok;
                 done();
             });
-            
+
             var ctrl = $componentController('appComponent');
+
+
+            $timeout.flush(TimeoutValue);
 
             $httpBackend.when('GET', '/big.json').respond(400, {});;
             ctrl.getList();
             $rootScope.$digest();
 
             setTimeout(function () {
-
                 $httpBackend.flush();
                 $rootScope.$digest();
                 expect(ctrl.list.length).to.eql(0);
@@ -189,37 +127,27 @@ describe('Server side Enabled - Custom app definition', function() {
     });
 
     describe('Component App that loads a BIG json file', function () {
-        var $httpBackend,
-            $componentController,
-            $rootScope;
 
-        beforeEach(function () {
-            var app = angular.module('appJSON', ['server'])
-                .component('appComponent', {
-                    template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
-                    controller: function ($http) {
-                        var ctrl = this;
-                        this.list = [];
-                        this.getList = function() {
-                            $http.get('/big.json').then(function (list) {
-                                ctrl.list = list.data;
-                            });
-                        };
+        var app = angular.module('appJSON2', ['server'])
+            .component('appComponent', {
+                template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
+                controller: function ($http) {
+                    var ctrl = this;
+                    this.list = [];
+                    this.getList = function() {
+                        $http.get('/big.json').then(function (list) {
+                            ctrl.list = list.data;
+                        });
+                    };
 
-                    },
-                    bindings: {}
-                });
+                },
+                bindings: {}
+            });
 
-
-            angular.mock.module('appJSON');
+        beforeEach(function() {
+            be.server('appJSON2');
+            be.injectServer();
         });
-
-        beforeEach(inject(function (_$rootScope_, _$httpBackend_, _$componentController_) {
-            $httpBackend = _$httpBackend_;
-            $componentController = _$componentController_;
-            $rootScope = _$rootScope_.$new();
-
-        }));
 
         after(function () {
             $httpBackend.verifyNoOutstandingExpectation();
@@ -229,9 +157,6 @@ describe('Server side Enabled - Custom app definition', function() {
 
         it('Should trigger a Idle event after the http loads ok - 1000ms', function (done) {
             var jsonLoaded = false;
-            $httpBackend.when('GET', '/someInexistantValue').respond({});
-            $httpBackend.flush();
-            $rootScope.$digest();
 
             window.addEventListener('Idle', function (event) {
                 expect(jsonLoaded).to.be.ok;
@@ -240,6 +165,8 @@ describe('Server side Enabled - Custom app definition', function() {
 
 
             var ctrl = $componentController('appComponent');
+
+            $timeout.flush(TimeoutValue);
 
             $httpBackend.when('GET', '/big.json').respond(window.bigJSON);
             ctrl.getList();
@@ -259,40 +186,27 @@ describe('Server side Enabled - Custom app definition', function() {
     describe('Filters', function () {
 
         var nbIterations = 1000;
-        beforeEach(function () {
-            var app = angular.module('appFilters', ['server'])
-                .component('appComponent', {
-                    template: "",
-                    controller: function ($filter) {
 
-                        this.dates = [];
+        var app = angular.module('appFilters', ['server'])
+            .component('appComponent', {
+                template: "",
+                controller: function ($filter) {
 
-                        this.bigFilter = function () {
-                            for (var i = 0; i < nbIterations; i++) {
-                                this.dates.push($filter('date')(Date.now()));
-                            }
+                    this.dates = [];
+
+                    this.bigFilter = function () {
+                        for (var i = 0; i < nbIterations; i++) {
+                            this.dates.push($filter('date')(Date.now()));
                         }
+                    }
 
-                    },
-                    bindings: {}
-                });
+                },
+                bindings: {}
+            });
 
-            angular.mock.module('appFilters');
-        });
-
-        var $filter, $componentController, $httpBackend, $rootScope;
-
-        beforeEach(inject(function (_$filter_, _$componentController_, _$httpBackend_, _$rootScope_) {
-            $filter = _$filter_;
-            $componentController = _$componentController_;
-            $httpBackend = _$httpBackend_;
-            $rootScope = _$rootScope_.$new();
-
-        }));
-
-        afterEach(function () {
-            $httpBackend.verifyNoOutstandingExpectation();
-            $httpBackend.verifyNoOutstandingRequest();
+        beforeEach(function() {
+            be.server('appFilters');
+            be.injectServer();
         });
 
         it('It should catch Idle event once the dates are $filtered', function (done) {
@@ -305,13 +219,10 @@ describe('Server side Enabled - Custom app definition', function() {
 
 
             var ctrl = $componentController('appComponent');
-            $httpBackend.when('GET', '/someInexistantValue').respond({});
-            $httpBackend.flush();
-            $rootScope.$digest();
 
+            $timeout.flush(TimeoutValue);
             ctrl.bigFilter();
             $rootScope.$digest();
-
 
         })
     });

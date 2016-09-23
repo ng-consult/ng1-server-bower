@@ -1,103 +1,34 @@
 'use strict';
 
-
+var be = before(window);
+be.global();
 
 describe("Server-side enabled - mock.module('test')", function () {
 
-    var files = {};
-    var $httpBackend, $rootScope, $q, counter, $log, $exceptionHandler;
-
-
-    var initServer = function() {
-        window.onServer = true;
-        window.fs = {
-            appendFile: function (path, msg, cb) {
-                files[path] = msg;
-            }
-        };
-        window.logConfig = {
-            dir: '/var/log/angular',
-            warn: {
-                enabled: true,
-                stack: false
-            },
-            log: {
-                enabled: true,
-                stack: false
-            },
-            debug: {
-                enabled: false,
-                stack: false
-            },
-            error: {
-                enabled: true,
-                stack: false
-            },
-            info: {
-                enabled: false,
-                stack: false
-            }
-        };
-        angular.mock.module('server')
-    };
-
-    initServer();
-
-    beforeEach(function() {
-        initServer();
-    });
-
-
-    beforeEach(inject(function (_$httpBackend_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_) {
-        $httpBackend = _$httpBackend_;
-        $rootScope = _$rootScope_.$new();
-        counter = _counter_;
-        $q = _$q_;
-        $log = _$log_;
-        $exceptionHandler = _$exceptionHandler_;
-        $httpBackend.when('GET', '/someInexistantValue').respond({});
-        $httpBackend.flush();
-        $rootScope.$digest();
-    }));
-
-
-    afterEach(function () {
-        $httpBackend.verifyNoOutstandingExpectation();
-        $httpBackend.verifyNoOutstandingRequest();
-    });
-
 
     describe('The unit test is mocked', function() {
-
-
-
-        //console.warn($log);
-
+        beforeEach(function() {
+            be.server('server');
+            be.injectServer();
+        });
         it('should launch correctly', function (done) {
-            expect(counter.getCount('http')).to.eql(0);
-            expect(counter.getCount('q')).to.eql(0);
-            expect(counter.getCount('digest')).to.eql(0);
-
             window.addEventListener('Idle', function (event) {
                 expect(event).to.be.defined;
                 done();
             });
 
-            setTimeout(function () {
-                $rootScope.$digest();
-                expect(counter.getCount('http')).to.eql(0);
-                expect(counter.getCount('q')).to.eql(0);
-                expect(counter.getCount('digest')).to.eql(0);
-                $rootScope.$digest();
-            }, 500);
+            $timeout.flush(TimeoutValue);
         });
     });
 
-
     describe('$q promise that takes 1000ms to resolve', function () {
 
-        it('Should catch the Idle event after the promises are resolved', function (done) {
+        beforeEach(function() {
+            be.server('server');
+            be.injectServer();
+        });
 
+        it('Should catch the Idle event after the promises are resolved', function (done) {
 
             var resolved = [false, false, false, false];
 
@@ -148,6 +79,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                 return defer.promise;
             }
 
+            $timeout.flush(TimeoutValue);
 
             var promise = asyncGreet('Robin Hood');
             //$rootScope.$digest();
@@ -209,17 +141,10 @@ describe("Server-side enabled - mock.module('test')", function () {
                 resolved[3] = true;
                 //console.info('test', 'test', 'finally reached', resolved);
             });
-
         });
-
-
     });
 
     describe('Log', function () {
-
-        it('$log should have a formatMsg function', function () {
-            expect(typeof $log.formatMsg).to.eql('function');
-        });
 
         var msg = "LOG TEST";
 
@@ -227,39 +152,93 @@ describe("Server-side enabled - mock.module('test')", function () {
             describe('$log.' + logName + '()', function () {
 
                 var path;
-
-                beforeEach(function () {
-                    files = {};
-                    path = window.logConfig.dir + '/' + logName;
-                    $log[logName].apply(null, [msg]);
+                beforeEach(function() {
+                    be.server('server');
+                    be.injectServer();
+                    $log.reset();
                 });
 
-
                 if (window.logConfig[logName].enabled === true) {
+
+                    beforeEach(function() {
+                        path = window.logConfig.dir + '/' + logName;
+                        $log[logName].apply(null, [msg]);
+                    });
 
                     it('should write into the correct log file', function () {
                         expect(typeof files[path]).to.not.be.undefined;
                     });
 
-                    it('should write the DATE formatted msg', function () {
-                        expect(files[path]).to.eql($log.formatMsg([msg]));
+                    it('Should not write logging on the screen', function() {
+                        expect(console[logName]).to.not.haveBeenCalled;
                     });
+
                 } else {
 
                     it('should NOT write into the correct log file', function () {
                         expect(typeof files[path]).to.eql('undefined');
                     });
+
+                    it('Should  write debug on the screen', function() {
+                        expect(console[logName]).to.haveBeenCalled;
+
+//                        expect($log[logName].logs[0][0]).to.eql(msg);
+
+                    });
+
                 }
             });
         });
+
+        describe('The dev log with serverDebug enabled', function() {
+            beforeEach(function() {
+                be.server('server');
+                be.injectServer();
+                $log.reset();
+            });
+
+            it('should call console.debug', function() {
+                $log.dev('Hello', 'world');
+                expect(console.debug).to.haveBeenCalled;
+            });
+
+            it('should write something on the dev file', function() {
+                $log.dev('Hello', 'world');
+                var path = window.logConfig.dir + '/dev';
+                console.log('FILES = ',files);
+                expect(typeof files[path]).to.not.be.undefined;
+            });
+        });
+
+        describe('The dev log with serverDebug disabled', function() {
+            beforeEach(function() {
+                be.server('server', { serverDebug: false});
+                be.injectServer();
+                $log.reset();
+            });
+
+            it('should not call console.debug', function() {
+                $log.dev('Hello', 'world');
+                expect(console.debug).to.not.haveBeenCalled;
+            });
+
+            it('should not write something on the dev file', function() {
+                $log.dev('Hello', 'world');
+                var path = window.logConfig.dir + '/dev';
+                expect(files[path]).to.be.undefined;
+            });
+        });
     });
+
 
     describe('Error Handler', function () {
 
         var exceptionMessage = 'Some error';
 
-        beforeEach(function () {
-            files = {};
+        beforeEach(function() {
+            be.server('server');
+            be.injectServer();
+            $log.reset();
         });
 
         it('should catch a ServerExceptionHandler event', function (done) {
@@ -284,15 +263,16 @@ describe("Server-side enabled - mock.module('test')", function () {
 
         });
 
-        /*
-         it('should log the message in the error log: ', function (done) {
+         it('should log the message in the error log: ', function () {
 
-         $exceptionHandler(exceptionMessage);
-         //console.info('test','test', 'files = ', {});
-         expect(files.error).to.not.be.undefined;
+             try{
+                 $exceptionHandler(exceptionMessage);
+             } catch(e){
+                 expect(console.error).to.haveBeenCalled;
+             }
 
          });
-         */
+
     });
 
     describe('$compile testing', function () {

@@ -68,9 +68,7 @@ const EngineQueue = ($log, $window: Window): IEngineQueue => {
     };
 */
     const done = (from?:string) => {
-        /*if(from){
-            $log.dev('EngineQueue', from, ' -> isDone() called', doneVar);
-        }*/
+        $log.dev('engineQueue.isDone()', from, doneVar);
         if(isDone) {
             return isDone;
         }

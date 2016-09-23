@@ -2,70 +2,68 @@
 
 const logDecorator = ($delegate, $window) =>{
 
-    if(typeof window['onServer'] !== 'undefined' && window['onServer'] === true && typeof window['fs'] !== 'undefined' && typeof window['logConfig'] !== 'undefined') {
+    const isDef = name => { return angular.isDefined($window[name])};
 
-        let fs = window['fs'];
-        let config = window['logConfig'];
+    if(isDef('onServer') && isDef('fs') && isDef('logConfig') && $window['onServer'] === true) {} else {
+        return $delegate;
+    }
 
-        let formatMsg = (msg: string[]) => {
-            let date = new Date();
-            return date + " -> " + msg.join(' ') + '\n';
-        };
+    const fs = $window['fs'];
+    const config = $window['logConfig'];
+    let timer = Date.now();
 
-        let log = (type:string, ...args ) => {
+    let formatMsg = (...str) => {
+        let date = new Date();
+        return date + " -> " + str.join(' ') + '\n';
+    };
 
-            if (config[type].enabled) {
-                let msg = formatMsg(args);
-                if (config[type].stack === true) {
+    const devLog = (...args) => {
+        let time = Date.now() - timer;
+        timer = Date.now();
+        let name = args.shift();
+        args.unshift(name + '+' + time);
+        fs.appendFile(config.dir + '/dev' , args.join(', '), (err) => {
+            if (err) throw err;
+        });
+        console.debug.apply(this, args);
+    };
+
+    var newLog = Object.create($delegate);
+    newLog.prototype = $delegate.prototype;
+
+    ['log', 'warn', 'info', 'error', 'debug'].forEach(function(item) {
+
+        if (config[item].enabled) {
+            newLog[item] = function(...args) {
+                let msg = formatMsg.apply(this, args);
+
+                if (config[item].stack === true) {
                     var err = new Error();
                     var stack = err['stack'];
                     msg += stack + '\n\n';
                 }
-                fs.appendFile(config.dir + '/' + type, msg, (err) => {
+                fs.appendFile(config.dir + '/' + item, msg, (err) => {
                     if (err) throw err;
                 });
-            } else {
-                $delegate[type].apply($window.console, args)
+                return new Object();
             }
-        };
+        } else {
+            newLog[item] = $delegate[item];
+        }
+    });
 
-        var timer = Date.now();
-        var myLog = {
-            formatMsg: formatMsg,
-            warn: function (...args) {
-                //console.warn.apply(null, args);
-                log('warn', args);
-            },
-            error: function (...args) {
-                //console.error.apply(null, args);
-                log('error', args);
-            },
-            info: function (...args) {
-                //console.info.apply(null, args);
-                log('info', args);
-            },
-            debug: function (...args) {
-                //console.debug.apply(null, args);
-                log('debug', args);
-            },
-            log: function (...args) {
-                //console.log.apply(null, args);
-                log('log', args);
-            },
-            dev: function(...args) {
-                return;
-                /*if(args[0] === 'digest') return;
-                var time = Date.now() - timer;
-                timer = Date.now();
-                var name = args.shift();
-                args.unshift(name + '+' + time);
-                console.debug.apply(null, args);*/
+    newLog['dev'] = function(...args: string[]) {
+        if($window['serverDebug'] === true) {
+            if( $window.serverDebug === true && args[0] !== 'digest') {
+                devLog.apply(null, args);
             }
-        };
-        return myLog;
-    } else {
-        return $delegate;
-    }
+            else if (typeof $window.serverDebug.digest === 'boolean' && $window.serverDebug.digest === true) {
+                devLog.apply(null, args);
+            }
+        }
+    };
+
+    return newLog;
 };
 
 export default logDecorator;

@@ -1,6 +1,7 @@
 import {IEngineQueue, ICounterFactory} from './../interfaces/definitions';
 
-const CounterFactory = (  $rootScope, $log, engineQueue: IEngineQueue,  TimeoutValue): ICounterFactory => {
+
+const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, TimeoutValue):ICounterFactory => {
     const counters = {};
 
     /**
@@ -9,70 +10,85 @@ const CounterFactory = (  $rootScope, $log, engineQueue: IEngineQueue,  TimeoutV
      * @param doneCB
      * @returns {any}
      */
-    const createCounter = (name: string, doneCB?:Function): Counter => {
-        if(!doneCB) {
-            doneCB = () => {};
+    const createCounter = (name:string, doneCB?:Function):Counter => {
+        if (!doneCB) {
+            doneCB = () => {
+            };
         }
+        $log.dev('counter', 'creating counter', name);
         counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, TimeoutValue, $log);
         return counters[name];
     };
 
-    const getCounter = (name: string): Counter => {
-        return counters[name];
-    };
-
-    const incr = (name: string): void => {
+    const incr = (name:string):void => {
         counters[name].incr();
     };
 
-    const decr = (name: string): void => {
+    const decr = (name:string):void => {
         counters[name].decr();
     };
 
-    const getCount = (name:string): number => {
+    const getCount = (name:string):number => {
         return counters[name].getCount();
+    };
+
+    const touch = (name:string):void => {
+        counters[name].touch();
     };
 
     return {
         create: createCounter,
         incr: incr,
         decr: decr,
-        getCount: getCount
+        getCount: getCount,
+        touch: touch
     };
 };
 
 class Counter {
     private done:boolean;
-    private timeout: any;
-    private count: number;
+    private timeout:any;
+    private count:number;
+    private untouched:boolean = true;
 
     private timer = Date.now();
 
-    constructor( private name: string, private doneCB:Function, private $rootScope, private engineQueue: IEngineQueue, private TimeoutValue: number, private $log) {
+    constructor(private name:string, private doneCB:Function, private $rootScope, private engineQueue:IEngineQueue, private TimeoutValue:number, private $log) {
         this.done = false;
         this.count = 0;
         this.engineQueue.setStatus(this.name, false);
     }
 
-    getCount = (): number => {
+    getCount = ():number => {
         return this.count;
     };
 
-    isDone = (): boolean => {
+    isDone = ():boolean => {
         return this.done;
     };
 
-    private clearTimeout = (): void => {
-        if(typeof this.timeout !== 'undefined') {
+    private clearTimeout = ():void => {
+        if (typeof this.timeout !== 'undefined') {
             this.$log.dev(this.name, 'Timeout cleared', this.timeout);
             this.timeout = window.clearTimeout(this.timeout);
         }
     };
 
-    incr = (): void => {
-        if(this.done) { return;}
+    touch = ():void => {
+        if(this.untouched) {
+            this.$log.dev('Counter'+this.name, 'is getting touched');
+            this.engineQueue.setStatus(this.name, true);
+            this.triggerIdle();
+        }
+    };
+
+    incr = ():void => {
+        this.untouched = false;
+        if (this.done) {
+            return;
+        }
         this.count++;
-        if(this.name !=='digest'){
+        if (this.name !== 'digest') {
             this.$log.dev(this.name, 'Incrementing counter ', this.count);
         }
         this.$log.dev(this.name, 'Incrementing counter ', this.count);
@@ -80,27 +96,29 @@ class Counter {
         this.clearTimeout();
     };
 
-    decr = (): void => {
-        if(this.done) { return;}
+    decr = ():void => {
+        if (this.done) {
+            return;
+        }
         this.count--;
-        if(this.name !=='digest'){
-            this.$log.dev(this.name, 'Decrementing counter ',this.count);
+        if (this.name !== 'digest') {
+            this.$log.dev(this.name, 'Decrementing counter ', this.count);
         }
         this.engineQueue.setStatus(this.name, false);
         this.clearTimeout();
-        if(this.count === 0) {
+        if (this.count === 0) {
             this.triggerIdle();
         }
     };
 
-    triggerIdle = (): void => {
+    triggerIdle = ():void => {
         this.clearTimeout();
         this.$log.dev(this.name, 'triggerIdle called', this.count, this.TimeoutValue);
-        this.timeout = window.setTimeout( function(){
-            if(this.count === 0) {
+        this.timeout = window.setTimeout(function () {
+            if (this.count === 0) {
                 this.$log.dev(this.name, 'setting the doneVar to true', this.count);
                 this.engineQueue.setStatus(this.name, true);
-                if(this.engineQueue.isDone()) {
+                if (this.engineQueue.isDone()) {
                     this.done = true;
                     this.$log.dev(this.name, 'calling CB()');
                     this.doneCB();
