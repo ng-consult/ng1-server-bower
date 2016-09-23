@@ -1,3 +1,4 @@
+
 var before = function (global) {
     return {
         global: function(override) {
@@ -42,10 +43,17 @@ var before = function (global) {
             this.global(override);
             global.angular.mock.module(appName);
         },
-        noServer: function (appName) {
+        noServer: function (appName, override) {
             delete global.onServer;
             delete global.fs;
             delete global.logConfig;
+            delete global.$cacheFactory;
+
+            if(override) {
+                for(var key in override) {
+                    global[key] = override[key];
+                }
+            }
             global.angular.mock.module(appName);
         },
         FN_ARGS: /^function\s*[^\(]*\(\s*([^\)]*)\)/m,
@@ -63,7 +71,7 @@ var before = function (global) {
         },
         injectServer: function () {
 
-            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_, _TimeoutValue_) {
+            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$cacheFactory_, _cacheFactoryConfig_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_, _timeoutValue_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');
@@ -76,7 +84,7 @@ var before = function (global) {
             return global.angular.mock.inject.apply(global, [fn]);
         },
         injectNoServer: function () {
-            var fn = function(_$componentController_, _$log_) {
+            var fn = function(_$componentController_, _$log_,  _$timeout_, _timeoutValue_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');

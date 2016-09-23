@@ -1,15 +1,6 @@
 import {IEngineQueue} from './../interfaces/definitions';
 
-class IdleEvent {
-    static Send = ($window: Window) => {
-        const Event = $window['Event'];
-        const dispatchEvent = $window.dispatchEvent;
-        const IdleEvent = new Event('Idle');
-        dispatchEvent(IdleEvent);
-    }
-}
-
-const EngineQueue = ($log, $window: Window): IEngineQueue => {
+const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
 
     const doneVar = {};
 
@@ -74,10 +65,11 @@ const EngineQueue = ($log, $window: Window): IEngineQueue => {
         }
         if(areDoneVarAllTrue()) {
             isDone = true;
-            //$log.dev('EngineQueue', 'Sending Idle Event');
-            IdleEvent.Send($window);
-            //$rootScope.$broadcast('Idle');
-            //checkPageActivity();
+            const Event = $window['Event'];
+            const dispatchEvent = $window.dispatchEvent;
+            const IdleEvent = new Event('Idle');
+            dispatchEvent(IdleEvent);
+            $rootScope.$broadcast('InternIdle');
         }
         return isDone;
     };

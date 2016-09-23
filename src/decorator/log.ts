@@ -5,6 +5,7 @@ const logDecorator = ($delegate, $window) =>{
     const isDef = name => { return angular.isDefined($window[name])};
 
     if(isDef('onServer') && isDef('fs') && isDef('logConfig') && $window['onServer'] === true) {} else {
+        $delegate.dev = () => {}
         return $delegate;
     }
 
@@ -22,7 +23,7 @@ const logDecorator = ($delegate, $window) =>{
         timer = Date.now();
         let name = args.shift();
         args.unshift(name + '+' + time);
-        fs.appendFile(config.dir + '/dev' , args.join(', '), (err) => {
+        fs.appendFile(config.dir + '/dev' , args.join(', ') + '\n', (err) => {
             if (err) throw err;
         });
         console.debug.apply(this, args);
