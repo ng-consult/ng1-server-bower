@@ -3,7 +3,7 @@ var path = require('path');
 
 module.exports = function (config) {
     var conf = sharedConfig();
-    
+
     if (process.env.TRAVIS) {
         conf.browsers = ['Chrome_travis_ci'];
         conf.files.push('test/travis.conf.js');
@@ -45,7 +45,7 @@ module.exports = function (config) {
                 // and use stats to turn off verbose output
                 stats: {
                     // options i.e.
-                    chunks: false
+                    chunks: true
                 }
             }
         };

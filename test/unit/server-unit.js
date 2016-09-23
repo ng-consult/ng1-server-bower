@@ -1,13 +1,12 @@
-'use strict';
-
 var be = before(window);
-be.global();
+
 
 describe("Server-side enabled - mock.module('test')", function () {
 
 
     describe('The unit test is mocked', function() {
         beforeEach(function() {
+            //be.global();
             be.server('server');
             be.injectServer();
         });
@@ -17,131 +16,183 @@ describe("Server-side enabled - mock.module('test')", function () {
                 done();
             });
 
-            $timeout.flush(TimeoutValue);
+            $timeout.flush(timeoutValue.get());
         });
     });
 
-    describe('$q promise that takes 1000ms to resolve', function () {
+    describe('$q promise', function () {
 
+        var asyncGreet;
         beforeEach(function() {
             be.server('server');
             be.injectServer();
-        });
-
-        it('Should catch the Idle event after the promises are resolved', function (done) {
-
-            var resolved = [false, false, false, false];
-
-            window.addEventListener('Idle', function () {
-                console.info('test', 'test', resolved);
-                expect(resolved[0]).to.be.ok;
-                expect(resolved[1]).to.be.ok;
-                expect(resolved[2]).to.be.ok;
-                expect(resolved[3]).to.be.ok;
-                done();
-            });
-
-            function okToGreet(name) {
-                return name === 'World';
-            }
-
-            function asyncGreet(name) {
-                // perform some asynchronous operation, resolve or reject the promise when appropriate.
+            asyncGreet = function(name, toBeResolved, time) {
                 return $q(function (resolve, reject) {
-                    setTimeout(function () {
-                        if (okToGreet(name)) {
-                            console.info('test', 'test', 'resolving ', name);
+                    $timeout(function () {
+                        if(toBeResolved) {
                             resolve('Hello, ' + name + '!');
-                            $rootScope.$digest();
                         } else {
-                            console.info('test', 'test', 'rejecting', name);
-                            reject('Greeting ' + name + ' is not allowed.');
-                            $rootScope.$digest();
+                            reject('Hold back, ' + name + '!');
                         }
-                    }, 1000);
+                        $rootScope.$digest();
+                    }, time);
                 });
-            }
+            };
+        });
 
+        describe('$q.when()', function() {
 
-            function asyncGreetDefer(name) {
-                var defer = $q.defer();
-                setTimeout(function () {
-                    if (okToGreet(name)) {
-                        console.info('test', 'test', 'defer-resolving ', name);
-                        defer.resolve('Hello, ' + name + '!');
-                        $rootScope.$digest();
-                    } else {
-                        console.info('test', 'test', 'defer-rejecting', name);
-                        defer.reject('Greeting ' + name + ' is not allowed.');
-                        $rootScope.$digest();
-                    }
-                }, 1000);
-                return defer.promise;
-            }
+            it('$q.when() with 1 promise that takes 1000ms to resolve', function(done) {
+                var resolved = false;
 
-            $timeout.flush(TimeoutValue);
+                window.addEventListener('Idle', function () {
+                    expect(resolved).to.be.ok;
+                    done();
+                });
 
-            var promise = asyncGreet('Robin Hood');
-            //$rootScope.$digest();
+                $q.when(asyncGreet('world', true, 1000)).then(function() {
+                    resolved = true;
+                });
 
-            promise.then(function (greeting) {
-                //console.info('test', 'test', 'Success: ' + greeting);
+                $timeout.flush(timeoutValue.get());
 
-            }, function (reason) {
-                expect(reason).to.not.be.undefined;
-                //console.info('test', 'test', 'Failed: ' + reason);
+                expect(resolved).to.eql(false);
 
-            }).catch(function (e) {
-                //console.info('test', 'test', 'error caught', e);
-
-            }).finally(function () {
-                resolved[0] = true;
-                expect(true).to.be.ok;
-                //console.info('test', 'test', 'finally reached', resolved);
-            });
-            //$rootScope.$digest();
-
-
-            var promise = asyncGreet('World');
-            promise.then(function (greeting) {
-                expect(greeting).to.not.be.undefined;
-                //console.info('test', 'test', 'Success: ' + greeting);
-            }, function (reason) {
-                //console.info('test', 'test', 'Failed: ' + reason);
-            }).catch(function (e) {
-                //console.info('test', 'test', 'error caught', e);
-            }).finally(function () {
-                resolved[1] = true;
-                //console.info('test', 'test', 'finally reached', resolved);
-            });
-
-
-            var promise = asyncGreetDefer('Robin Hood');
-            promise.then(function (greeting) {
-                //console.info('test', 'test', 'Success: ' + greeting);
-            }, function (reason) {
-                expect(reason).to.not.be.undefined;
-                //console.info('test', 'test', 'Failed: ' + reason);
-            }).catch(function (e) {
-                //console.info('test', 'test', 'error caught', e);
-            }).finally(function () {
-                resolved[2] = true;
-                //console.info('test', 'test', 'finally reached', resolved);
-            });
-
-            var promise = asyncGreetDefer('World');
-            promise.then(function (greeting) {
-                expect(greeting).to.not.be.undefined;
-                //console.info('test', 'test', 'Success: ' + greeting);
-            }, function (reason) {
-                //console.info('test', 'test', 'Failed: ' + reason);
-            }).catch(function (e) {
-                //console.info('test', 'test', 'error caught', e);
-            }).finally(function (fin) {
-                resolved[3] = true;
-                //console.info('test', 'test', 'finally reached', resolved);
+                $timeout.flush(800);
             });
         });
+        describe('$q.all()', function() {
+            it('$q.all() with 10 promises that takes 1000ms to resolve', function(done) {
+
+                var resolved = false;
+
+                window.addEventListener('Idle', function () {
+                    expect(resolved).to.be.ok;
+                    done();
+                });
+
+                var promises = [];
+
+                for(var i=0;i<10;i++) {
+                    promises.push(asyncGreet('World', true, 1000));
+                }
+
+                var all = $q.all(promises).then(function(data) {
+                    resolved = true;
+                });
+
+                $timeout.flush(1000);
+
+            });
+
+
+            it('$q.all() with 10 promises that takes 1000ms to resolve, and the last that gets rejected', function(done) {
+
+                var resolved = false;
+                var rejected = false;
+
+                timeoutValue.set(200);
+
+                window.addEventListener('Idle', function () {
+                    expect(resolved).to.be.not.ok;
+                    expect(rejected).to.be.ok;
+                    done();
+                });
+
+                var promises = [];
+
+                for(var i=0;i<9;i++) {
+                    promises.push(asyncGreet('World', true, 1000));
+                }
+                promises.push(asyncGreet('Joe', false, 1000));
+
+                var all = $q.all(promises).then(function(data) {
+                    resolved = true;
+                }, function(err) {
+                    //console.log('rejected with', err);
+                    rejected = true;
+                });
+
+                $timeout.flush(timeoutValue.get());
+
+                expect(resolved).to.be.not.ok;
+                expect(rejected).to.be.not.ok;
+
+                $timeout.flush(800);
+
+            });
+
+        });
+
+        describe('$q.race()', function() {
+
+            it('$q.race() timeoutValue = 200, with 1st promise that takes 100ms to get rejected and 9 promises that takes 150ms to resolve', function(done) {
+
+                var resolved = false;
+                var rejected = false;
+
+                window.addEventListener('Idle', function () {
+                    expect(resolved).to.be.not.ok;
+                    expect(rejected).to.be.ok;
+                    done();
+                    done();
+                });
+
+                var promises = [];
+
+                promises.push(asyncGreet('Joe', false, 100));
+
+                for(var i=0;i<10;i++) {
+                    promises.push(asyncGreet('World', true, 150));
+                }
+
+                $q.race(promises).then(function(data) {
+                    resolved = true;
+                }, function(err) {
+                    rejected = true;
+                });
+
+
+                $timeout.flush(timeoutValue.get());
+
+
+            });
+
+            it('$q.race() , timeoutValue=200, with 1st promise that takes 1000ms to get rejected and 9 promises that takes 1500ms to resolve', function(done) {
+
+                var resolved = false;
+                var rejected = false;
+
+
+                window.addEventListener('Idle', function () {
+                    expect(resolved).to.be.not.ok;
+                    expect(rejected).to.be.ok;
+                    done();
+                });
+
+                var promises = [];
+
+                promises.push(asyncGreet('Joe', false, 1000));
+
+                for(var i=0;i<10;i++) {
+                    promises.push(asyncGreet('World', true, 1500));
+                }
+
+                var race = $q.race(promises).then(function(data) {
+                    //console.log('resolved with', data);
+                    resolved = true;
+                }, function(err) {
+                    //console.log('rejected with', err);
+                    rejected = true;
+                });
+
+
+                $timeout.flush(1000);
+
+            });
+
+        });
+
     });
 
     describe('Log', function () {
@@ -153,6 +204,7 @@ describe("Server-side enabled - mock.module('test')", function () {
 
                 var path;
                 beforeEach(function() {
+                    be = before(window);
                     be.server('server');
                     be.injectServer();
                     $log.reset();
@@ -192,6 +244,7 @@ describe("Server-side enabled - mock.module('test')", function () {
 
         describe('The dev log with serverDebug enabled', function() {
             beforeEach(function() {
+                be = before(window);
                 be.server('server');
                 be.injectServer();
                 $log.reset();
@@ -205,7 +258,6 @@ describe("Server-side enabled - mock.module('test')", function () {
             it('should write something on the dev file', function() {
                 $log.dev('Hello', 'world');
                 var path = window.logConfig.dir + '/dev';
-                console.log('FILES = ',files);
                 expect(typeof files[path]).to.not.be.undefined;
             });
         });
@@ -236,6 +288,7 @@ describe("Server-side enabled - mock.module('test')", function () {
         var exceptionMessage = 'Some error';
 
         beforeEach(function() {
+            be = before(window);
             be.server('server');
             be.injectServer();
             $log.reset();

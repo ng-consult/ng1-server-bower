@@ -1,7 +1,7 @@
 'use strict';
 
 
-const ExceptionHandler = ($delegate, $log, $window) => {
+const ExceptionHandler = ($delegate, $window) => {
 
     let errorHandler = (error, cause) => {
         let err = new Error();

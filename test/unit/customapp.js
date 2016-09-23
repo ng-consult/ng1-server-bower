@@ -1,9 +1,9 @@
-
 var be = before(window);
+be.global();
 
 
-describe('Server side Enabled - Custom app definition', function() {
-    
+describe('Server side Enabled - Custom app definition', function () {
+
     describe('A ng-model gets updated app', function () {
 
         var app = angular.module('appNgModel', ['server'])
@@ -16,7 +16,7 @@ describe('Server side Enabled - Custom app definition', function() {
                 bindings: {}
             });
 
-        beforeEach(function() {
+        beforeEach(function () {
             be.server('appNgModel');
             be.injectServer();
         });
@@ -38,7 +38,7 @@ describe('Server side Enabled - Custom app definition', function() {
 
             modelChanged = true;
 
-            $timeout.flush(TimeoutValue);
+            $timeout.flush(timeoutValue.get());
 
         });
 
@@ -54,7 +54,7 @@ describe('Server side Enabled - Custom app definition', function() {
             var ctrl = $componentController('appComponent');
 
 
-            $timeout.flush(TimeoutValue);
+            $timeout.flush(timeoutValue.get());
 
             for (var i = 0; i < 1000; i++) {
                 ctrl.item = 'changed' + i;
@@ -66,7 +66,7 @@ describe('Server side Enabled - Custom app definition', function() {
 
     });
 
-    describe('Component app that loads a failed reuqest', function() {
+    describe('Component app that loads a failed reuqest', function () {
         var app = angular.module('appJSON', ['server'])
             .component('appComponent', {
                 template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
@@ -75,19 +75,17 @@ describe('Server side Enabled - Custom app definition', function() {
                     this.list = [];
                     this.error1;
                     this.error2;
-                    this.getList = function () {
-                        $http.get('/big.json').then(function (list) {
-                            ctrl.list = list.data;
-                        }, function(err) {
-                            ctrl.error1 = err.status;
-                        });
-                    };
 
+                    $http.get('/big.json').then(function (list) {
+                        ctrl.list = list.data;
+                    }, function (err) {
+                        ctrl.error1 = err.status;
+                    });
                 },
                 bindings: {}
             });
 
-        beforeEach(function() {
+        beforeEach(function () {
             be.server('appJSON');
             be.injectServer();
         });
@@ -107,14 +105,7 @@ describe('Server side Enabled - Custom app definition', function() {
 
             var ctrl = $componentController('appComponent');
 
-
-            $timeout.flush(TimeoutValue);
-
-            $httpBackend.when('GET', '/big.json').respond(400, {});;
-            ctrl.getList();
-            $rootScope.$digest();
-
-            setTimeout(function () {
+            $timeout(function () {
                 $httpBackend.flush();
                 $rootScope.$digest();
                 expect(ctrl.list.length).to.eql(0);
@@ -122,6 +113,11 @@ describe('Server side Enabled - Custom app definition', function() {
                 jsonFailed = true;
 
             }, 1000);
+
+
+            $httpBackend.when('GET', '/big.json').respond(400, {});
+
+            $timeout.flush(1000);
 
         });
     });
@@ -134,22 +130,22 @@ describe('Server side Enabled - Custom app definition', function() {
                 controller: function ($http) {
                     var ctrl = this;
                     this.list = [];
-                    this.getList = function() {
-                        $http.get('/big.json').then(function (list) {
-                            ctrl.list = list.data;
-                        });
-                    };
+
+                    $http.get('/big.json').then(function (list) {
+                        ctrl.list = list.data;
+                    });
+
 
                 },
                 bindings: {}
             });
 
-        beforeEach(function() {
+        beforeEach(function () {
             be.server('appJSON2');
             be.injectServer();
         });
 
-        after(function () {
+        afterEach(function () {
             $httpBackend.verifyNoOutstandingExpectation();
             $httpBackend.verifyNoOutstandingRequest();
         });
@@ -157,28 +153,26 @@ describe('Server side Enabled - Custom app definition', function() {
 
         it('Should trigger a Idle event after the http loads ok - 1000ms', function (done) {
             var jsonLoaded = false;
+            $httpBackend.when('GET', '/big.json').respond(window.bigJSON);
 
             window.addEventListener('Idle', function (event) {
                 expect(jsonLoaded).to.be.ok;
                 done();
             });
 
-
             var ctrl = $componentController('appComponent');
 
-            $timeout.flush(TimeoutValue);
-
-            $httpBackend.when('GET', '/big.json').respond(window.bigJSON);
-            ctrl.getList();
-            $rootScope.$digest();
-
-            setTimeout(function () {
+            $timeout(function () {
                 $httpBackend.flush();
                 jsonLoaded = true;
-                $rootScope.$digest();
                 expect(ctrl.list.length).to.eql(window.bigJSON.length);
             }, 1000);
 
+            $timeout.flush(timeoutValue.get());
+
+            expect(ctrl.list.length).to.eql(0);
+
+            $timeout.flush(1000-timeoutValue.get());
         });
 
     });
@@ -204,7 +198,7 @@ describe('Server side Enabled - Custom app definition', function() {
                 bindings: {}
             });
 
-        beforeEach(function() {
+        beforeEach(function () {
             be.server('appFilters');
             be.injectServer();
         });
@@ -217,12 +211,10 @@ describe('Server side Enabled - Custom app definition', function() {
                 done();
             });
 
-
             var ctrl = $componentController('appComponent');
 
-            $timeout.flush(TimeoutValue);
+            $timeout.flush(timeoutValue.get());
             ctrl.bigFilter();
-            $rootScope.$digest();
 
         })
     });

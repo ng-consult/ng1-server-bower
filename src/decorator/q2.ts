@@ -31,10 +31,9 @@
  $Q.all
  $Q.resolve
  $Q.when
-
  */
 
-const Q = function ($delegate, $rootScope, TimeoutValue, counter) {
+const Q = function ($delegate, counter) {
 
     var qCounter = counter.create('q');
 
@@ -74,7 +73,7 @@ const Q = function ($delegate, $rootScope, TimeoutValue, counter) {
             return deferred;
         }
     };
-    
+
     var $Q = function(resolver) {
         //console.warn('creating new Q()');
         if (typeof resolver !== 'function') {

@@ -1,6 +1,6 @@
 'use strict';
 
-const HttpInterceptorQueue = ($q, $window, $rootScope, $log, TimeoutValue, counter) => {
+const HttpInterceptorQueue = ($q, $log, counter) => {
 
     $log.dev('HttpInterceptor', 'instanciated', this);
 

@@ -4,7 +4,7 @@
   "scripts": {
     "bower": "./node_modules/.bin/bower install",
     "build": "./node_modules/.bin/webpack",
-    "test": "./node_modules/.bin/karma start test/karma-unit.conf.js --single-run",
+    "test": "rm -Rf ./coverage ; ./node_modules/.bin/karma start test/karma-unit.conf.js --single-run",
     "codecov": "./node_modules/.bin/codecov"
   },
   "pre-commit": [
@@ -17,7 +17,7 @@
     "src",
     "*.js"
   ],
-  "version": "1.1.1",
+  "version": "1.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
