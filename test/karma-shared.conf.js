@@ -3,7 +3,7 @@ var path = require('path');
 module.exports = function () {
     return {
         basePath: './../',
-        frameworks: ['mocha', 'chai', 'mocha-debug'],
+        frameworks: ['mocha', 'chai', 'mocha-debug', 'sinon-chai'],
         reporters: ['mocha', 'coverage'],
         browsers: ['Chrome'],
         customLaunchers: {
@@ -73,7 +73,7 @@ module.exports = function () {
             },
             //test files
             {
-                pattern: 'test/unit/*.json',
+                pattern: 'test/unit/json/*',
                 served: true,
                 wacthed: false,
                 included: true

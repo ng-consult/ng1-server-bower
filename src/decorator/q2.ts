@@ -74,17 +74,6 @@ const Q = function ($delegate, $rootScope, TimeoutValue, counter) {
             return deferred;
         }
     };
-
-    const reject = (...args) => {
-        qCounter.decr();
-        //console.warn('nb promises:  ', qCounter.getCount());
-        return Oreject.apply($delegate, args);
-    };
-
-    var Owhen = $delegate.when;
-    const when = (...args) => {
-        return Owhen.apply($delegate, args);
-    };
     
     var $Q = function(resolver) {
         //console.warn('creating new Q()');
@@ -111,8 +100,8 @@ const Q = function ($delegate, $rootScope, TimeoutValue, counter) {
     $Q.prototype = proto;
 
     $Q.defer = deferFn($delegate);
-    $Q.reject = reject;
-    $Q.when = when;
+    $Q.reject = $delegate.reject;
+    $Q.when = $delegate.when;
 
     $Q.resolve = Oresolve;
     $Q.all = Oall;

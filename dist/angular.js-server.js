@@ -51,7 +51,7 @@
 	var engineQueue_1 = __webpack_require__(4);
 	var q2_1 = __webpack_require__(5);
 	var Counter_1 = __webpack_require__(6);
-	angular.module('server', [])
+	var serverModule = angular.module('server', [])
 	    .constant('TimeoutValue', 500)
 	    .config(function ($provide, $httpProvider, $windowProvider) {
 	    var $window = $windowProvider.$get();
@@ -64,22 +64,22 @@
 	        $provide.factory('httpInterceptorQueue', httpInterceptorQueue_1.default);
 	        $httpProvider.interceptors.push('httpInterceptorQueue');
 	    }
-	})
-	    .run(function ($rootScope, $q, $http, $log, counter) {
-	    counter.create('digest', function () {
-	        digestWatcher();
-	    });
-	    var digestWatcher = $rootScope.$watch(function () {
-	        counter.incr('digest');
-	        $rootScope.$$postDigest(function () {
-	            counter.decr('digest');
+	}).run(function ($rootScope, $q, $http, $injector, $window) {
+	    if (typeof $window.onServer !== 'undefined' && $window.onServer === true) {
+	        var counter = $injector.get('counter', 'angular.js-module run()');
+	        counter.create('digest', function () {
+	            digestWatcher();
 	        });
-	    });
-	    $rootScope.$apply(function () { var i = 0; });
-	    $q(function (resolve, reject) { resolve(true); }).then(function (res) { });
-	    $http.get('/someInexistantValue', { config: { timeout: 10 } }).then(function () {
-	    }, function (err) {
-	    });
+	        var digestWatcher = $rootScope.$watch(function () {
+	            counter.incr('digest');
+	            $rootScope.$$postDigest(function () {
+	                counter.decr('digest');
+	            });
+	        });
+	        $rootScope.$apply(function () { var i = 0; });
+	        $q(function (resolve, reject) { resolve(true); }).then(function (res) { });
+	        $http.get('/someInexistantValue', { config: { timeout: 10 } });
+	    }
 	});
 
 
@@ -118,7 +118,7 @@
 /***/ function(module, exports) {
 
 	'use strict';
-	var logDecorator = function ($delegate) {
+	var logDecorator = function ($delegate, $window) {
 	    if (typeof window['onServer'] !== 'undefined' && window['onServer'] === true && typeof window['fs'] !== 'undefined' && typeof window['logConfig'] !== 'undefined') {
 	        var fs_1 = window['fs'];
 	        var config_1 = window['logConfig'];
@@ -126,8 +126,13 @@
 	            var date = new Date();
 	            return date + " -> " + msg.join(' ') + '\n';
 	        };
-	        var log_1 = function (type, msg) {
+	        var log_1 = function (type) {
+	            var args = [];
+	            for (var _i = 1; _i < arguments.length; _i++) {
+	                args[_i - 1] = arguments[_i];
+	            }
 	            if (config_1[type].enabled) {
+	                var msg = formatMsg_1(args);
 	                if (config_1[type].stack === true) {
 	                    var err = new Error();
 	                    var stack = err['stack'];
@@ -138,21 +143,9 @@
 	                        throw err;
 	                });
 	            }
-	        };
-	        var getArgs = function () {
-	            var args = [];
-	            for (var _i = 0; _i < arguments.length; _i++) {
-	                args[_i - 0] = arguments[_i];
+	            else {
+	                $delegate[type].apply($window.console, args);
 	            }
-	            var values = [];
-	            args.forEach(function (item) {
-	                if (typeof item === 'string') {
-	                    values.push(item);
-	                }
-	                else if (typeof item.toString === 'function') {
-	                    values.push(item.toString());
-	                }
-	            });
 	        };
 	        var timer = Date.now();
 	        var myLog = {
@@ -162,40 +155,35 @@
 	                for (var _i = 0; _i < arguments.length; _i++) {
 	                    args[_i - 0] = arguments[_i];
 	                }
-	                console.warn.apply(null, args);
-	                log_1('warn', formatMsg_1(args));
+	                log_1('warn', args);
 	            },
 	            error: function () {
 	                var args = [];
 	                for (var _i = 0; _i < arguments.length; _i++) {
 	                    args[_i - 0] = arguments[_i];
 	                }
-	                console.error.apply(null, args);
-	                log_1('error', formatMsg_1(args));
+	                log_1('error', args);
 	            },
 	            info: function () {
 	                var args = [];
 	                for (var _i = 0; _i < arguments.length; _i++) {
 	                    args[_i - 0] = arguments[_i];
 	                }
-	                console.info.apply(null, args);
-	                log_1('info', formatMsg_1(args));
+	                log_1('info', args);
 	            },
 	            debug: function () {
 	                var args = [];
 	                for (var _i = 0; _i < arguments.length; _i++) {
 	                    args[_i - 0] = arguments[_i];
 	                }
-	                console.debug.apply(null, args);
-	                log_1('debug', formatMsg_1(args));
+	                log_1('debug', args);
 	            },
 	            log: function () {
 	                var args = [];
 	                for (var _i = 0; _i < arguments.length; _i++) {
 	                    args[_i - 0] = arguments[_i];
 	                }
-	                console.log.apply(null, args);
-	                log_1('log', formatMsg_1(args));
+	                log_1('log', args);
 	            },
 	            dev: function () {
 	                var args = [];
@@ -324,22 +312,6 @@
 	            return deferred;
 	        };
 	    };
-	    var reject = function () {
-	        var args = [];
-	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
-	        }
-	        qCounter.decr();
-	        return Oreject.apply($delegate, args);
-	    };
-	    var Owhen = $delegate.when;
-	    var when = function () {
-	        var args = [];
-	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
-	        }
-	        return Owhen.apply($delegate, args);
-	    };
 	    var $Q = function (resolver) {
 	        if (typeof resolver !== 'function') {
 	            throw new Error('norslvr - Expected resolverFn, got - resolver');
@@ -356,8 +328,8 @@
 	    };
 	    $Q.prototype = proto;
 	    $Q.defer = deferFn($delegate);
-	    $Q.reject = reject;
-	    $Q.when = when;
+	    $Q.reject = $delegate.reject;
+	    $Q.when = $delegate.when;
 	    $Q.resolve = Oresolve;
 	    $Q.all = Oall;
 	    $Q.race = Orace;
@@ -372,7 +344,7 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	function CounterFactory($rootScope, $log, engineQueue, TimeoutValue) {
+	var CounterFactory = function ($rootScope, $log, engineQueue, TimeoutValue) {
 	    var counters = {};
 	    var createCounter = function (name, doneCB) {
 	        if (!doneCB) {
@@ -399,10 +371,7 @@
 	        decr: decr,
 	        getCount: getCount
 	    };
-	}
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = CounterFactory;
-	;
+	};
 	var Counter = (function () {
 	    function Counter(name, doneCB, $rootScope, engineQueue, TimeoutValue, $log) {
 	        var _this = this;
@@ -477,6 +446,8 @@
 	    }
 	    return Counter;
 	}());
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = CounterFactory;
 
 
 /***/ }
