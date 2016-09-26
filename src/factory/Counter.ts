@@ -15,16 +15,25 @@ const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, timeoutValue
             doneCB = () => {
             };
         }
+        if (typeof $rootScope.counters === 'undefined') {
+            $rootScope.counters = {};
+        }
+        $rootScope.counters[name] = 0;
         $log.dev('counter', 'creating counter', name);
+        if(typeof counters[name] !== 'undefined') {
+            return counters[name];
+        }
         counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, timeoutValue.get(), $log);
         return counters[name];
     };
 
     const incr = (name:string):void => {
+        $rootScope.counters[name]++;
         counters[name].incr();
     };
 
     const decr = (name:string):void => {
+        $rootScope.counters[name]--;
         counters[name].decr();
     };
 
