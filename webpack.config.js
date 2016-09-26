@@ -5,7 +5,7 @@ module.exports = {
     output: {
         filename: 'dist/angular.js-server.js'
     },
-    devtool: 'inline-source-map',
+    devtool: 'source-map',
     resolve: {
         root: path.resolve('./src'),
         extensions: ['', '.ts']
