@@ -1,30 +1,49 @@
 var be = before(window);
 
-
 describe("Server-side enabled - mock.module('test')", function () {
-
-
+    //todo fix tests
+    var uid= 123;
+    var restServerURL =  'http://domain.com';
+    var socketServerURL = 'http://localhost:8882';
     describe('The unit test is mocked', function() {
         beforeEach(function() {
             //be.global();
-            be.server('server');
+            be.server('server', {
+                serverConfig: {
+                    uid: uid
+                }});
             be.injectServer();
         });
         it('should launch correctly', function (done) {
-            window.addEventListener('Idle', function (event) {
+            $rootScope.$on('InternIdle', function (event) {
                 expect(event).to.be.defined;
                 done();
             });
-
-            $timeout.flush(timeoutValue.get());
+            $timeout.flush(serverConfig.getTimeoutValue() );
         });
+
+        describe('serverConfig', function() {
+
+            it('It detects that we are on server', function() {
+                expect(serverConfig.onServer()).eql(true);
+            });
+
+
+            it('Gets the correct uid, socketServerURL, restServerURL URLs', function() {
+                expect(serverConfig.getUID()).eql(uid);
+                expect(serverConfig.getRestServer()).eql(restServerURL);
+                expect(serverConfig.getSocketServer()).eql(socketServerURL);
+            });
+
+        });
+
     });
 
     describe('$q promise', function () {
 
         var asyncGreet;
         beforeEach(function() {
-            be.server('server');
+            be.server('server', {serverConfig: {uid: uid}});
             be.injectServer();
             asyncGreet = function(name, toBeResolved, time) {
                 return $q(function (resolve, reject) {
@@ -54,7 +73,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     resolved = true;
                 });
 
-                $timeout.flush(timeoutValue.get());
+                $timeout.flush(serverConfig.getTimeoutValue());
 
                 expect(resolved).to.eql(false);
 
@@ -91,7 +110,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                 var resolved = false;
                 var rejected = false;
 
-                timeoutValue.set(200);
+                serverConfig.setTimeoutValue(400);
 
                 window.addEventListener('Idle', function () {
                     expect(resolved).to.be.not.ok;
@@ -113,12 +132,12 @@ describe("Server-side enabled - mock.module('test')", function () {
                     rejected = true;
                 });
 
-                $timeout.flush(timeoutValue.get());
+                $timeout.flush(serverConfig.getTimeoutValue());
 
                 expect(resolved).to.be.not.ok;
                 expect(rejected).to.be.not.ok;
 
-                $timeout.flush(800);
+                $timeout.flush(600);
 
             });
 
@@ -153,7 +172,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                 });
 
 
-                $timeout.flush(timeoutValue.get());
+                $timeout.flush(serverConfig.getTimeoutValue());
 
 
             });
@@ -162,7 +181,6 @@ describe("Server-side enabled - mock.module('test')", function () {
 
                 var resolved = false;
                 var rejected = false;
-
 
                 window.addEventListener('Idle', function () {
                     expect(resolved).to.be.not.ok;
@@ -178,7 +196,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     promises.push(asyncGreet('World', true, 1500));
                 }
 
-                var race = $q.race(promises).then(function(data) {
+                $q.race(promises).then(function(data) {
                     //console.log('resolved with', data);
                     resolved = true;
                 }, function(err) {
@@ -186,9 +204,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     rejected = true;
                 });
 
-
-                $timeout.flush(1000);
-
+                $timeout.flush(1500);
             });
 
         });
@@ -199,89 +215,90 @@ describe("Server-side enabled - mock.module('test')", function () {
 
         var msg = "LOG TEST";
 
+        var socketEmit;
+
+
+        beforeEach(function () {
+            be = before(window);
+            be.server('server', {serverConfig: {uid: uid}});
+            be.injectServer();
+            socketEmit = sinon.stub(socket, 'emit');
+        });
+
+        afterEach(function () {
+            socketEmit.restore();
+        })
+
+        it('Stubs the socket.emit', function () {
+
+            socket.emit('test', {});
+
+            expect(socketEmit.called).to.be.true;
+
+            expect(socketEmit.calledWithExactly('test', {})).to.be.true;
+
+        });
+
         ['log', 'warn', 'debug', 'error', 'info'].forEach(function (logName) {
-            describe('$log.' + logName + '()', function () {
 
-                var path;
-                beforeEach(function() {
-                    be = before(window);
-                    be.server('server');
-                    be.injectServer();
-                    $log.reset();
-                });
+            it('$log.' + logName + '()', function () {
 
-                if (window.logConfig[logName].enabled === true) {
+                $log[logName].apply(null, [msg]);
 
-                    beforeEach(function() {
-                        path = window.logConfig.dir + '/' + logName;
-                        $log[logName].apply(null, [msg]);
-                    });
+                expect(socketEmit.calledWithExactly('LOG', {
+                    type: logName,
+                    args: [msg]
+                })).to.be.true;
 
-                    it('should write into the correct log file', function () {
-                        expect(typeof files[path]).to.not.be.undefined;
-                    });
-
-                    it('Should not write logging on the screen', function() {
-                        expect(console[logName]).to.not.haveBeenCalled;
-                    });
-
-                } else {
-
-                    it('should NOT write into the correct log file', function () {
-                        expect(typeof files[path]).to.eql('undefined');
-                    });
-
-                    it('Should  write debug on the screen', function() {
-                        expect(console[logName]).to.haveBeenCalled;
-
-//                        expect($log[logName].logs[0][0]).to.eql(msg);
-
-                    });
-
-                }
             });
+
         });
 
-        describe('The dev log with serverDebug enabled', function() {
-            beforeEach(function() {
-                be = before(window);
-                be.server('server');
-                be.injectServer();
-                $log.reset();
-            });
+    });
+    
+    describe('The dev log with serverDebug enabled', function() {
 
-            it('should call console.debug', function() {
-                $log.dev('Hello', 'world');
-                expect(console.debug).to.haveBeenCalled;
-            });
+        var socketEmit;
 
-            it('should write something on the dev file', function() {
-                $log.dev('Hello', 'world');
-                var path = window.logConfig.dir + '/dev';
-                expect(typeof files[path]).to.not.be.undefined;
-            });
+        beforeEach(function() {
+            be = before(window);
+            be.server('server', {serverConfig: {uid: uid, debug: true}});
+            be.injectServer();
+            socketEmit = sinon.stub(socket, 'emit');
         });
 
-        describe('The dev log with serverDebug disabled', function() {
-            beforeEach(function() {
-                be.server('server', { serverDebug: false});
-                be.injectServer();
-                $log.reset();
-            });
-
-            it('should not call console.debug', function() {
-                $log.dev('Hello', 'world');
-                expect(console.debug).to.not.haveBeenCalled;
-            });
-
-            it('should not write something on the dev file', function() {
-                $log.dev('Hello', 'world');
-                var path = window.logConfig.dir + '/dev';
-                expect(files[path]).to.be.undefined;
-            });
+        afterEach(function () {
+            socketEmit.restore();
         });
+
+        it('should emit()', function() {
+            $log.dev('Hello', 'world');
+            expect(socketEmit.calledWith('LOG')).to.be.true;
+        });
+
     });
 
+    describe('The dev log with serverDebug disabled', function() {
+
+        var socketEmit;
+
+        beforeEach(function() {
+            be = before(window);
+            be.server('server', {serverConfig: {uid: uid, debug: false}});
+            be.injectServer();
+            socketEmit = sinon.stub(socket, 'emit');
+        });
+
+        afterEach(function () {
+            socketEmit.restore();
+        });
+
+        it('should not emit()', function() {
+            $log.dev('Hello', 'world');
+            expect(socketEmit.calledWith('LOG')).to.be.false;
+        });
+
+    });
 
     describe('Error Handler', function () {
 
@@ -289,30 +306,21 @@ describe("Server-side enabled - mock.module('test')", function () {
 
         beforeEach(function() {
             be = before(window);
-            be.server('server');
+            be.server('server',{serverConfig: {uid: uid}});
             be.injectServer();
-            $log.reset();
         });
 
         it('should catch a ServerExceptionHandler event', function (done) {
 
-            window.addEventListener('ServerExceptionHandler', function (details) {
-                expect(details).to.not.be.undefined;
+            window.addEventListener('ExceptionHandler', function () {
                 done();
             });
 
-            $exceptionHandler(exceptionMessage);
+            try{
+                $exceptionHandler(exceptionMessage);
+            } catch(e) {
 
-        });
-
-        it('should have the correct cause defined', function (done) {
-
-            window.addEventListener('ServerExceptionHandler', function (event) {
-                expect(event.details.exception).to.eql(exceptionMessage);
-                done();
-            });
-
-            $exceptionHandler(exceptionMessage);
+            }
 
         });
 
@@ -321,7 +329,7 @@ describe("Server-side enabled - mock.module('test')", function () {
              try{
                  $exceptionHandler(exceptionMessage);
              } catch(e){
-                 expect(console.error).to.haveBeenCalled;
+                 expect($log.error).to.haveBeenCalled;
              }
 
          });
@@ -340,13 +348,8 @@ describe("Server-side enabled - mock.module('test')", function () {
         });
     });
 
-
     describe('Directive compilation', function () {
 
     });
-
-
-
-
 
 });

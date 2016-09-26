@@ -1,8 +1,24 @@
-import {IEngineQueue} from './../interfaces/definitions';
+import {IEngineQueue, IServerConfig} from './../interfaces/definitions';
 
-const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
+const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, serverConfig: IServerConfig): IEngineQueue => {
 
     const doneVar = {};
+
+    const dependencies = {};
+    const addDependency = (url: string, cacheId: string) => {
+        if(typeof dependencies[cacheId] === 'undefined') {
+            dependencies[cacheId] = [];
+        }
+        dependencies[cacheId].push(url);
+    };
+
+    $window['ngIdle'] = false;
+    $rootScope.exception = false;
+
+    //makes sure that when an exception occurs, the IDLE state is NOT triggered
+    $window.addEventListener('ExceptionHandler', () => {
+        $rootScope.exception = true;
+    });
 
     const setStatus = function(name: string, value: boolean) {
         if(isDone) {
@@ -15,68 +31,102 @@ const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
         }
     };
 
-    /*
-    if (!window['Worker']) {
-        throw new Error('a web worker support is necessary for usage with angular.js. Ifit doesn\'t work, it means that you are using a very outdated browser, like Internet Explorer');
-    }*/
-
     let isDone = false;
 
-    //const maximumAverage = 20;
-
-    const areDoneVarAllTrue = () => {
+    const areDoneVarAllTrue = (): boolean => {
         for(var key in doneVar) {
             if(!doneVar[key]) { return false;}
         }
         return true;
     };
 
-    /*
-    const checkPageActivity = () => {
-        var i = 0, diff = 0, d = Date.now();
+    const getExportedCache = () => {
+        const exportedCache = {};
+        $log.log('Dependencies', dependencies);
+        $log.log('getRestCacheEnabled() = ', serverConfig.getRestCacheEnabled());
+        $log.log('$cacheFactory.exportAll()', $cacheFactory.exportAll());
 
-        var timeoutFn = () => {
-            diff += (Date.now() - d);
-            timer = setTimeout(timeoutFn, 0);
-            if (i++==50) {
-                clearTimeout(timer);
-                average =  diff / i;
-                if (average > maximumAverage) {
-                    checkPageActivity();
+        for(let cacheId in dependencies) {
+            exportedCache[cacheId] = {};
+            const cachedUrls = $cacheFactory.export(cacheId);
+
+            $log.log('cachedURL = ', cachedUrls);
+
+            dependencies[cacheId].forEach( (cachedUrl:string) => {
+                if(serverConfig.getRestCacheEnabled()) {
+                    exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
                 } else {
-                    if(areDoneVarAllTrue()) {
-                        isDone = true;
-                        console.warn('Sending Idle Event');
-                        $rootScope.$broadcast('Idle');
+                    //extract original URL
+                    const cacheServerURL = serverConfig.getRestServer() + '/get?url=';
+
+                    if(cachedUrl.indexOf(cacheServerURL) === 0) {
+                        let decodedCachedUrl = decodeURIComponent(cachedUrl.replace(cacheServerURL, ''));
+                        exportedCache[cacheId][decodedCachedUrl] = cachedUrls[cachedUrl];
+                    } else {
+                        throw new Error('Something unlogical hapens here');
                     }
                 }
-            }
-            d = Date.now();
-        };
 
-        var average = null;
-        var timer = setTimeout(timeoutFn, 0);
+            });
+        }
+        return exportedCache;
     };
-*/
-    const done = (from?:string) => {
+
+
+    const done = (from?:string): boolean => {
         $log.dev('engineQueue.isDone()', from, doneVar);
         if(isDone) {
             return isDone;
         }
-        if(areDoneVarAllTrue()) {
+        if(areDoneVarAllTrue() && $rootScope.exception === false) {
             isDone = true;
-            const Event = $window['Event'];
-            const dispatchEvent = $window.dispatchEvent;
-            const IdleEvent = new Event('Idle');
-            dispatchEvent(IdleEvent);
-            $rootScope.$broadcast('InternIdle');
+
+            $window['ngIdle'] = true;
+
+            if(serverConfig.onServer() === true) {
+
+                //todo uncomment this
+                //console.log('GOing to throw an error');
+                //throw new Error('testerror');
+
+                socket.emit('IDLE', {
+                    html: document.documentElement.outerHTML,
+                    doctype: new XMLSerializer().serializeToString(document.doctype),
+                    url: window.location.href,
+                    exportedCache: getExportedCache()
+                });
+
+                socket.on('IDLE'+ serverConfig.getUID(), function() {
+                    const Event = $window['Event'];
+                    const dispatchEvent = $window.dispatchEvent;
+                    const IdleEvent = new Event('Idle');
+                    console.log('Idle dispatched - server side');
+                    dispatchEvent(IdleEvent);
+                    $rootScope.$broadcast('InternIdle');
+
+                });
+            } else {
+                console.log('Going to trigger Idle');
+                if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+                    //console.log('deleting $http', serverConfig.getDefaultHttpCache());
+                    $cacheFactory.delete('$http');
+                }
+                const Event = $window['Event'];
+                const dispatchEvent = $window.dispatchEvent;
+                const IdleEvent = new Event('Idle');
+                console.log('Idle dispatched');
+                dispatchEvent(IdleEvent);
+                $rootScope.$broadcast('InternIdle');
+
+            }
         }
         return isDone;
     };
 
     return {
         isDone: done,
-        setStatus: setStatus
+        setStatus: setStatus,
+        addDependency: addDependency
     };
 };
 

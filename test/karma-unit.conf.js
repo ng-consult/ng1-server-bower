@@ -23,7 +23,7 @@ module.exports = function (config) {
                 output: {
                     filename: 'dist/angular.js-server.js'
                 },
-                devtool: 'inline-source-map',
+                devtool: 'source-map',
                 resolve: {
                     root: path.resolve('./src'),
                     extensions: ['', '.ts']
@@ -45,14 +45,12 @@ module.exports = function (config) {
                 // and use stats to turn off verbose output
                 stats: {
                     // options i.e.
-                    chunks: true
+                    chunks: false
                 }
             }
         };
 
         conf = Object.assign(conf, localConf);
-
-        console.log(conf);
 
     }
 

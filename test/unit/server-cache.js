@@ -2,22 +2,20 @@ var be = before(window);
 
 describe("cache Factory Decorator - window.onServer = false, no data to import", function () {
 
-
     beforeEach(function() {
         be.noServer('server');
         be.injectServer();
     });
 
-    it('The app should just work', function() {
-        expect(true).to.be.ok
+    it('The app should just work', function(done) {
+        $rootScope.$on('InternIdle', function() {
+            done();
+        });
+        $timeout.flush(serverConfig.getTimeoutValue());
     });
 
-    it('$window.$cacheFactory should not be set', function() {
-        expect(window.$cacheFactory).to.be.defined;
-    });
-
-    it('$window.$angularServerCache should not be set', function() {
-        expect(window.$angularServerCache).to.be.undefined;
+    it('serverConfig.hasRestCache() should be false.', function() {
+        expect(serverConfig.hasRestCache()).eql(false);
     });
 
 });
@@ -30,98 +28,89 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
             key: 'value'
         }
     };
-    
-    describe('General setting', function() {
-        beforeEach(function() {
-            be.noServer('server',{
-                $angularServerCache: data
-            });
-            be.injectServer();
-        });
-
-        it('The app should just work', function() {
-            expect(true).to.be.ok
-        });
-
-        it('$window.$cacheFactory should not be set', function() {
-            expect(window.$cacheFactory).to.be.defined;
-        });
-
-        it('$window.$angularServerCache should be set', function() {
-            expect(window.$angularServerCache).to.be.defined;
-        });
-
-        it('Should catch the idle event', function(done) {
-            window.addEventListener('Idle', function(e) {
-                expect(e).to.be.defined;
-                done();
-            });
-            $timeout.flush(200);
-        });
-
-    });
 
     describe('With $http.defaults.cache = true', function() {
-
         beforeEach(function() {
             be.noServer('server',{
-                $angularServerCache: data
+                ngServerCache: data,
+                serverConfig: {
+                    httpCache: true,
+                    restCacheEnabled: false
+                }
             });
             be.injectServer();
         });
 
-
-        it('The cache should be loaded ok', function() {
-            expect(window.$angularServerCache).to.eql(data);
-
-            expect($cacheFactory.exportAll()).to.eql(data);
+        it('The app should just work', function(done) {
+            $rootScope.$on('InternIdle', function() {
+                done();
+            });
+            $timeout.flush(serverConfig.getTimeoutValue());
         });
 
-        it('After Idle, the cache should persist', function() {
-
-            expect(window.$angularServerCache).to.eql(data);
-
-            $timeout.flush(200);
-
-            expect($cacheFactory.exportAll()).to.eql(data);
-
+        it('serverConfig.hasRestCache() should be true.', function() {
+            expect(serverConfig.hasRestCache()).eql(true);
         });
+
+        it('serverConfig.getRestCacheEnabled() should be false.', function() {
+            expect(serverConfig.getRestCacheEnabled()).eql(false);
+        });
+
+        it('The cacheFactory should have had imported the cached data', function() {
+            expect($cacheFactory.exportAll()).eql(data);
+        });
+
+        it('After IDLE, the cache data should still be present', function(done) {
+            $rootScope.$on('InternIdle', function() {
+                expect($cacheFactory.exportAll()).eql(data);
+                done();
+            });
+            $timeout.flush(serverConfig.getTimeoutValue());
+        });
+
     });
 
     describe('With $http.defaults.cache = false', function() {
 
-        var app = angular.module('someApp', ['server']).config(function(cacheFactoryConfigProvider ){
-            cacheFactoryConfigProvider.$get().setDefaultCache(false);
-        });
         beforeEach(function() {
-            be.noServer('someApp',{
-                $angularServerCache: data
+            be.noServer('server',{
+                ngServerCache: data,
+                serverConfig: {
+                    httpCache: false,
+                    restCacheEnabled: false
+                }
             });
             be.injectServer();
         });
 
-        it('The cache should be loaded ok', function() {
-
-            expect(cacheFactoryConfig.getDefaultCache()).to.eql(false);
-
-            expect(window.$angularServerCache).to.eql(data);
-
-            expect($cacheFactory.exportAll()).to.eql(data);
-        });
 
 
-        it('After Idle, the cache should not persist', function(done) {
-
-            window.addEventListener('Idle', function(e) {
-                expect(e).to.be.defined;
+        it('The app should just work', function(done) {
+            $rootScope.$on('InternIdle', function() {
                 done();
             });
+            $timeout.flush(serverConfig.getTimeoutValue());
+        });
 
-            expect(window.$angularServerCache).to.eql(data);
+        it('serverConfig.hasRestCache() should be true.', function() {
+            expect(serverConfig.hasRestCache()).eql(true);
+        });
 
-            $timeout.flush(200);
-            expect(cacheFactoryConfig.getDefaultCache()).to.eql(false);
+        it('The cacheFactory should have had imported the cached data', function() {
+            expect($cacheFactory.exportAll()).eql(data);
+        });
 
+        it('serverConfig.getRestCacheEnabled() should be false.', function() {
+            expect(serverConfig.getRestCacheEnabled()).eql(false);
+        });
+
+        it('After IDLE, the cache data should be empty', function(done) {
+            $rootScope.$on('InternIdle', function() {
+                expect($cacheFactory.exportAll()).eql({});
+                done();
+            });
+            $timeout.flush(serverConfig.getTimeoutValue());
         });
     });
+
 });

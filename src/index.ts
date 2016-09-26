@@ -1,37 +1,53 @@
-/// <reference path="../typings/globals/angular/index.d.ts" />
-
+import {IServerConfig, ICounterFactory} from './interfaces/definitions';
 import HttpInterceptorQueue from './factory/httpInterceptorQueue';
 import Log from './decorator/log';
-import ExceptionHandler from './decorator/exceptionHandler';
 import EngineQueue from './factory/engineQueue';
 import Q from './decorator/q2';
 import CounterFactory from './factory/Counter';
-import TimeoutValueProvider from './provider/timeoutValue';
-import {CacheFactory, TemplateCache, CacheFactoryConfig} from './decorator/cacheFactory';
+import {CacheFactory, TemplateCache} from './decorator/cacheFactory';
+import ServerConfigFactory from './factory/serverConfig';
+import SocketFactory from './factory/Socket';
+import ExceptionHandler from './decorator/exceptionHandler';
+import TemplateRequest from './decorator/templateRequest';
+import WindowError from './factory/windowError';
+
 
 angular.module('server', [])
-    .provider('timeoutValue', TimeoutValueProvider)
-    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', CounterFactory])
-    .factory('engineQueue', ['$log', '$rootScope', '$window', EngineQueue])
-    .factory('httpInterceptorQueue', ['$q', '$log', 'counter', HttpInterceptorQueue])
+
+    .factory('serverConfig', [ '$window', ServerConfigFactory])
+    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', CounterFactory])
+    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfig', EngineQueue])
+    .factory('socket', ['$window', 'serverConfig', SocketFactory])
+    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfig', 'counter', HttpInterceptorQueue])
+    .factory('windowError', ['$rootScope', '$window', 'serverConfig', WindowError])
+
+    .decorator('$exceptionHandler', ['$delegate', '$log', '$window', ExceptionHandler])
     .decorator('$q', ['$delegate', 'counter', Q])
-    .decorator('$exceptionHandler', ['$delegate', '$window', ExceptionHandler])
-    .decorator('$log', ['$delegate', '$window', Log])
+    .decorator('$log', ['$delegate', 'socket', 'serverConfig', Log])
     .decorator('$cacheFactory', ['$delegate', CacheFactory])
     .decorator('$templateCache', ['$cacheFactory', TemplateCache])
-    .provider('cacheFactoryConfig', CacheFactoryConfig)
-    .config(function ($httpProvider) {
+    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfig', TemplateRequest])
 
+    .config( ($httpProvider) => {
         $httpProvider.interceptors.push('httpInterceptorQueue');
-
     })
-    .run(function ($rootScope, $log, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) {
 
-        // IDLE EVENT SETION
-        if (typeof $window.clientTimeoutValue === 'number') {
-            timeoutValue.set($window.clientTimeoutValue);
-        } else {
-            timeoutValue.set(200);
+    .run( ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfig: IServerConfig, counter: ICounterFactory) => {
+
+        windowError.init();
+        serverConfig.init();
+
+        $log.log('hasRestCache = ', serverConfig.hasRestCache());
+
+        if(serverConfig.hasRestCache()) {
+            $cacheFactory.importAll(serverConfig.getRestCache());
+            $log.log('after import: ', $cacheFactory.exportAll());
+            $http.defaults.cache = true;
+        }
+
+        if (serverConfig.onServer() == true) {
+            $http.defaults.cache = true;
+            socket.init();
         }
 
         const httpCouter = counter.create('http');
@@ -41,6 +57,15 @@ angular.module('server', [])
             digestWatcher();
         });
 
+        $timeout(function () {
+            $rootScope.$apply(() => {
+                $log.dev('index.ts', 'touching http and q');
+                httpCouter.touch();
+                qCounter.touch();
+            });
+
+        }, serverConfig.getTimeoutValue());
+
         var digestWatcher = $rootScope.$watch(() => {
             counter.incr('digest');
             $rootScope.$$postDigest(function () {
@@ -48,45 +73,12 @@ angular.module('server', [])
             });
         });
 
-        $rootScope.$apply(() => {
-            //run a dummy digest
-            $timeout(() => {
-                $log.dev('index.ts', 'touching http and q');
-                $log.dev('index.ts', 'getting http count', counter.getCount('http'), httpCouter.getCount());
-                //$log.dev('index.ts', 'getting httpCcounter', counter.get('http'), counter.get('http').getCount());
 
-                $log.dev('index.ts', 'getting q count', counter.getCount('q'), qCounter.getCount());
-                //$log.dev('index.ts', 'getting httpCOunter', counter.get('q'), counter.get('q').getCount());
-                httpCouter.touch();
-                qCounter.touch();
-            }, timeoutValue.get());
-        });
-
-
-        // REST CACHE SECTION
-        $http.defaults.cache = true;
-
-        if ($window.onServer && $window.onServer === true) {
-            $window.$cacheFactory = $cacheFactory;
-        }
-
-        if (typeof $window.onServer === 'undefined' && typeof $window.$angularServerCache !== 'undefined') {
-
-            $cacheFactory.importAll($window.$angularServerCache);
-
-            var defaultCache = cacheFactoryConfig.getDefaultCache();
-
-            $rootScope.$on('InternIdle', function () {
-                if (defaultCache === false) {
-                    $cacheFactory.delete('$http');
-                    $http.defaults.cache = defaultCache;
-                }
+        if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+            $rootScope.$on('InternIdle', function() {
+                $http.defaults.cache = false;
             });
-        }
-
-
-
-
+        };
 
     });
 
