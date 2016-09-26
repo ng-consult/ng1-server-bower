@@ -43,7 +43,7 @@ const logDecorator = ($delegate, $window) =>{
                     var stack = err['stack'];
                     msg += stack + '\n\n';
                 }
-                fs.appendFile(config.dir + '/' + item, msg, (err) => {
+                fs.appendFile(config.dir + '/' + item + '.log', msg, (err) => {
                     if (err) throw err;
                 });
                 return new Object();

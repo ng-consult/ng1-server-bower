@@ -6,6 +6,7 @@ export interface IEngineQueue {
 
 export interface ICounterFactory {
     create: Function,
+    get: Function,
     incr: Function,
     decr: Function,
     getCount: Function,

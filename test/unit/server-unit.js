@@ -163,7 +163,6 @@ describe("Server-side enabled - mock.module('test')", function () {
                 var resolved = false;
                 var rejected = false;
 
-
                 window.addEventListener('Idle', function () {
                     expect(resolved).to.be.not.ok;
                     expect(rejected).to.be.ok;
@@ -178,7 +177,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     promises.push(asyncGreet('World', true, 1500));
                 }
 
-                var race = $q.race(promises).then(function(data) {
+                $q.race(promises).then(function(data) {
                     //console.log('resolved with', data);
                     resolved = true;
                 }, function(err) {
@@ -186,9 +185,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     rejected = true;
                 });
 
-
-                $timeout.flush(1000);
-
+                $timeout.flush(1500);
             });
 
         });

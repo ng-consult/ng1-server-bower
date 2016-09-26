@@ -23,6 +23,7 @@ angular.module('server', [])
     .config(function ($httpProvider) {
 
         $httpProvider.interceptors.push('httpInterceptorQueue');
+        console.debug('The Client is in the config() ');
 
     })
     .run(function ($rootScope, $log, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) {
@@ -41,27 +42,23 @@ angular.module('server', [])
             digestWatcher();
         });
 
+
+        $timeout(function() {
+            $rootScope.$apply(() => {
+                $log.dev('index.ts', 'touching http and q');
+                httpCouter.touch();
+                qCounter.touch();
+            });
+
+        }, timeoutValue.get());
+
+
         var digestWatcher = $rootScope.$watch(() => {
             counter.incr('digest');
             $rootScope.$$postDigest(function () {
                 counter.decr('digest');
             });
         });
-
-        $rootScope.$apply(() => {
-            //run a dummy digest
-            $timeout(() => {
-                $log.dev('index.ts', 'touching http and q');
-                $log.dev('index.ts', 'getting http count', counter.getCount('http'), httpCouter.getCount());
-                //$log.dev('index.ts', 'getting httpCcounter', counter.get('http'), counter.get('http').getCount());
-
-                $log.dev('index.ts', 'getting q count', counter.getCount('q'), qCounter.getCount());
-                //$log.dev('index.ts', 'getting httpCOunter', counter.get('q'), counter.get('q').getCount());
-                httpCouter.touch();
-                qCounter.touch();
-            }, timeoutValue.get());
-        });
-
 
         // REST CACHE SECTION
         $http.defaults.cache = true;
@@ -83,8 +80,6 @@ angular.module('server', [])
                 }
             });
         }
-
-
 
 
 
