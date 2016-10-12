@@ -47,28 +47,64 @@
 	"use strict";
 	var httpInterceptorQueue_1 = __webpack_require__(1);
 	var log_1 = __webpack_require__(2);
-	var exceptionHandler_1 = __webpack_require__(3);
-	var engineQueue_1 = __webpack_require__(4);
-	var q2_1 = __webpack_require__(5);
-	var Counter_1 = __webpack_require__(6);
-	var timeoutValue_1 = __webpack_require__(7);
-	var cacheFactory_1 = __webpack_require__(8);
+	var engineQueue_1 = __webpack_require__(3);
+	var q2_1 = __webpack_require__(4);
+	var Counter_1 = __webpack_require__(5);
+	var timeoutValue_1 = __webpack_require__(6);
+	var cacheFactory_1 = __webpack_require__(7);
+	var Socket_1 = __webpack_require__(8);
+	var exceptionHandler_1 = __webpack_require__(9);
 	angular.module('server', [])
 	    .provider('timeoutValue', timeoutValue_1.default)
+	    .decorator('$exceptionHandler', ['$delegate', '$log', '$window', exceptionHandler_1.default])
 	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', Counter_1.default])
-	    .factory('engineQueue', ['$log', '$rootScope', '$window', engineQueue_1.default])
+	    .factory('engineQueue', ['$log', '$rootScope', '$window', 'socket', engineQueue_1.default])
+	    .factory('socket', [Socket_1.default])
 	    .factory('httpInterceptorQueue', ['$q', '$log', 'counter', httpInterceptorQueue_1.default])
 	    .decorator('$q', ['$delegate', 'counter', q2_1.default])
-	    .decorator('$exceptionHandler', ['$delegate', '$window', exceptionHandler_1.default])
-	    .decorator('$log', ['$delegate', '$window', log_1.default])
+	    .decorator('$log', ['$delegate', 'socket', '$window', log_1.default])
 	    .decorator('$cacheFactory', ['$delegate', cacheFactory_1.CacheFactory])
 	    .decorator('$templateCache', ['$cacheFactory', cacheFactory_1.TemplateCache])
 	    .provider('cacheFactoryConfig', cacheFactory_1.CacheFactoryConfig)
 	    .config(function ($httpProvider) {
 	    $httpProvider.interceptors.push('httpInterceptorQueue');
-	    console.debug('The Client is in the config() ');
 	})
-	    .run(function ($rootScope, $log, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) {
+	    .run(function ($rootScope, socket, $log, $exceptionHandler, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) {
+	    var originalThrow = $window.throw;
+	    var originalErrorHandler = $window.onerror;
+	    if (!originalErrorHandler) {
+	        originalErrorHandler = function mockHandler() {
+	            return (true);
+	        };
+	    }
+	    $window.onerror = function handleGlobalError(message, fileName, lineNumber, columnNumber, error) {
+	        if (!error) {
+	            error = new Error(message);
+	            error.fileName = fileName;
+	            error.lineNumber = lineNumber;
+	            error.columnNumber = (columnNumber || 0);
+	        }
+	        $rootScope.exception = true;
+	        return false;
+	        return originalErrorHandler.apply($window, arguments);
+	    };
+	    if ($window.onServer == true) {
+	        if (typeof $window['io'] !== 'undefined') {
+	            socket.connect($window.serverConfig.socketHostname);
+	        }
+	        else {
+	            var script = document.createElement('script');
+	            $window.document.head.appendChild(script);
+	            script.onload = function () {
+	                console.log('IO SCRIPT LOADED', JSON.stringify('http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+	                if (typeof $window['io'] === 'undefined') {
+	                    throw new Error('It seems IO didnt load inside ngApp');
+	                }
+	                socket.connect($window.serverConfig.socketHostname);
+	            };
+	            script.src = 'http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
+	        }
+	    }
 	    if (typeof $window.clientTimeoutValue === 'number') {
 	        timeoutValue.set($window.clientTimeoutValue);
 	    }
@@ -95,19 +131,6 @@
 	        });
 	    });
 	    $http.defaults.cache = true;
-	    if ($window.onServer && $window.onServer === true) {
-	        $window.$cacheFactory = $cacheFactory;
-	    }
-	    if (typeof $window.onServer === 'undefined' && typeof $window.$angularServerCache !== 'undefined') {
-	        $cacheFactory.importAll($window.$angularServerCache);
-	        var defaultCache = cacheFactoryConfig.getDefaultCache();
-	        $rootScope.$on('InternIdle', function () {
-	            if (defaultCache === false) {
-	                $cacheFactory.delete('$http');
-	                $http.defaults.cache = defaultCache;
-	            }
-	        });
-	    }
 	});
 
 
@@ -151,65 +174,25 @@
 /***/ function(module, exports) {
 
 	'use strict';
-	var _this = this;
-	var logDecorator = function ($delegate, $window) {
-	    var isDef = function (name) { return angular.isDefined($window[name]); };
-	    if (isDef('onServer') && isDef('fs') && isDef('logConfig') && $window['onServer'] === true) { }
-	    else {
+	var logDecorator = function ($delegate, socket, $window) {
+	    if (typeof $window['onServer'] === 'undefined') {
 	        $delegate.dev = function () { };
 	        return $delegate;
 	    }
-	    var fs = $window['fs'];
-	    var config = $window['logConfig'];
-	    var timer = Date.now();
-	    var formatMsg = function () {
-	        var str = [];
-	        for (var _i = 0; _i < arguments.length; _i++) {
-	            str[_i - 0] = arguments[_i];
-	        }
-	        var date = new Date();
-	        return date + " -> " + str.join(' ') + '\n';
-	    };
-	    var devLog = function () {
-	        var args = [];
-	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
-	        }
-	        var time = Date.now() - timer;
-	        timer = Date.now();
-	        var name = args.shift();
-	        args.unshift(name + '+' + time);
-	        fs.appendFile(config.dir + '/dev', args.join(', ') + '\n', function (err) {
-	            if (err)
-	                throw err;
-	        });
-	        console.debug.apply(_this, args);
-	    };
 	    var newLog = Object.create($delegate);
 	    newLog.prototype = $delegate.prototype;
 	    ['log', 'warn', 'info', 'error', 'debug'].forEach(function (item) {
-	        if (config[item].enabled) {
-	            newLog[item] = function () {
-	                var args = [];
-	                for (var _i = 0; _i < arguments.length; _i++) {
-	                    args[_i - 0] = arguments[_i];
-	                }
-	                var msg = formatMsg.apply(this, args);
-	                if (config[item].stack === true) {
-	                    var err = new Error();
-	                    var stack = err['stack'];
-	                    msg += stack + '\n\n';
-	                }
-	                fs.appendFile(config.dir + '/' + item + '.log', msg, function (err) {
-	                    if (err)
-	                        throw err;
-	                });
-	                return new Object();
+	        newLog[item] = function () {
+	            var args = [];
+	            for (var _i = 0; _i < arguments.length; _i++) {
+	                args[_i - 0] = arguments[_i];
+	            }
+	            var log = {
+	                type: item,
+	                args: args
 	            };
-	        }
-	        else {
-	            newLog[item] = $delegate[item];
-	        }
+	            socket.emit('LOG', JSON.stringify(log));
+	        };
 	    });
 	    newLog['dev'] = function () {
 	        var args = [];
@@ -217,11 +200,15 @@
 	            args[_i - 0] = arguments[_i];
 	        }
 	        if ($window['serverDebug'] === true) {
+	            var log = {
+	                type: 'dev',
+	                args: args
+	            };
 	            if ($window.serverDebug === true && args[0] !== 'digest') {
-	                devLog.apply(null, args);
+	                socket.emit('LOG', JSON.stringify(log));
 	            }
 	            else if (typeof $window.serverDebug.digest === 'boolean' && $window.serverDebug.digest === true) {
-	                devLog.apply(null, args);
+	                socket.emit('LOG', JSON.stringify(log));
 	            }
 	        }
 	    };
@@ -235,33 +222,13 @@
 /* 3 */
 /***/ function(module, exports) {
 
-	'use strict';
-	var ExceptionHandler = function ($delegate, $window) {
-	    var errorHandler = function (error, cause) {
-	        var err = new Error();
-	        var stack = err['stack'];
-	        var errorEvent = new $window.CustomEvent('ServerExceptionHandler');
-	        errorEvent.details = {
-	            exception: error,
-	            cause: cause,
-	            err: stack
-	        };
-	        $window.dispatchEvent(errorEvent);
-	        return $delegate(error, cause);
-	    };
-	    return errorHandler;
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ExceptionHandler;
-
-
-/***/ },
-/* 4 */
-/***/ function(module, exports) {
-
 	"use strict";
-	var EngineQueue = function ($log, $rootScope, $window) {
+	var EngineQueue = function ($log, $rootScope, $window, socket) {
 	    var doneVar = {};
+	    $rootScope.exception = false;
+	    $window.addEventListener('ExceptionHandler', function () {
+	        $rootScope.exception = true;
+	    });
 	    var setStatus = function (name, value) {
 	        if (isDone) {
 	            return;
@@ -285,13 +252,31 @@
 	        if (isDone) {
 	            return isDone;
 	        }
-	        if (areDoneVarAllTrue()) {
+	        if (areDoneVarAllTrue() && $rootScope.exception === false) {
 	            isDone = true;
-	            var Event_1 = $window['Event'];
-	            var dispatchEvent_1 = $window.dispatchEvent;
-	            var IdleEvent = new Event_1('Idle');
-	            dispatchEvent_1(IdleEvent);
-	            $rootScope.$broadcast('InternIdle');
+	            if ($window['onServer'] === true) {
+	                socket.emit('IDLE', {
+	                    html: document.documentElement.outerHTML,
+	                    doctype: new XMLSerializer().serializeToString(document.doctype),
+	                    url: window.location.href,
+	                    uid: $window['serverConfig'].uid
+	                });
+	                socket.on('IDLE' + $window['serverConfig'].uid, function () {
+	                    var Event = $window['Event'];
+	                    var dispatchEvent = $window.dispatchEvent;
+	                    var IdleEvent = new Event('Idle');
+	                    dispatchEvent(IdleEvent);
+	                    $rootScope.$broadcast('InternIdle');
+	                });
+	            }
+	            else {
+	                var Event_1 = $window['Event'];
+	                var dispatchEvent_1 = $window.dispatchEvent;
+	                var IdleEvent = new Event_1('Idle');
+	                dispatchEvent_1(IdleEvent);
+	                console.log('IDLE');
+	                $rootScope.$broadcast('InternIdle');
+	            }
 	        }
 	        return isDone;
 	    };
@@ -305,7 +290,7 @@
 
 
 /***/ },
-/* 5 */
+/* 4 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -362,7 +347,7 @@
 
 
 /***/ },
-/* 6 */
+/* 5 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -499,7 +484,7 @@
 
 
 /***/ },
-/* 7 */
+/* 6 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -528,7 +513,7 @@
 
 
 /***/ },
-/* 8 */
+/* 7 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -648,6 +633,83 @@
 	    return CacheFactoryConfig;
 	}());
 	exports.CacheFactoryConfig = CacheFactoryConfig;
+
+
+/***/ },
+/* 8 */
+/***/ function(module, exports) {
+
+	"use strict";
+	var SocketFactory = function () {
+	    var socket;
+	    var queueEmit = [];
+	    var queueOn = [];
+	    var connected = false;
+	    var connect = function (socketServer) {
+	        console.log('connecting to socket server ', socketServer);
+	        socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
+	        socket.on('connect', function () {
+	            console.log('connected');
+	            connected = true;
+	            var elem;
+	            while (elem = queueEmit.shift()) {
+	                emit(elem.key, elem.value);
+	            }
+	            while (elem = queueOn.shift()) {
+	                on(elem.key, elem.cb);
+	            }
+	        });
+	        socket.on('connect_timeout', function (err) {
+	            console.log('connect_timeout', err);
+	        });
+	        socket.on('connect_error', function (err) {
+	            console.log('connect_error', err);
+	        });
+	    };
+	    var emit = function (key, value) {
+	        if (!connected) {
+	            queueEmit.push({ key: key, value: value });
+	        }
+	        else {
+	            socket.emit(key, value);
+	        }
+	    };
+	    var on = function (key, cb) {
+	        console.log('Received Event ', key);
+	        if (!connected) {
+	            queueOn.push({ key: key, cb: cb });
+	        }
+	        else {
+	            socket.on(key, cb);
+	        }
+	    };
+	    return {
+	        connect: connect,
+	        emit: emit,
+	        on: on
+	    };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = SocketFactory;
+
+
+/***/ },
+/* 9 */
+/***/ function(module, exports) {
+
+	'use strict';
+	var ExceptionHandler = function ($delegate, $log, $window) {
+	    var Event = $window['Event'];
+	    var dispatchEvent = $window.dispatchEvent;
+	    var IdleEvent = new Event('ExceptionHandler');
+	    return function (exception, cause) {
+	        dispatchEvent(IdleEvent);
+	        $log.debug('Default exception handler.');
+	        $delegate(exception, cause);
+	    };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ExceptionHandler;
 
 
 /***/ }

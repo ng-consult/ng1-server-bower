@@ -1,8 +1,15 @@
 import {IEngineQueue} from './../interfaces/definitions';
 
-const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
+const EngineQueue = ($log, $rootScope, $window: Window, socket): IEngineQueue => {
 
     const doneVar = {};
+    
+    $rootScope.exception = false;
+
+    //makes sure that when an exception occurs, the IDLE state is NOT triggered
+    $window.addEventListener('ExceptionHandler', () => {
+        $rootScope.exception = true;
+    });
 
     const setStatus = function(name: string, value: boolean) {
         if(isDone) {
@@ -15,14 +22,7 @@ const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
         }
     };
 
-    /*
-    if (!window['Worker']) {
-        throw new Error('a web worker support is necessary for usage with angular.js. Ifit doesn\'t work, it means that you are using a very outdated browser, like Internet Explorer');
-    }*/
-
     let isDone = false;
-
-    //const maximumAverage = 20;
 
     const areDoneVarAllTrue = () => {
         for(var key in doneVar) {
@@ -31,45 +31,43 @@ const EngineQueue = ($log, $rootScope, $window: Window): IEngineQueue => {
         return true;
     };
 
-    /*
-    const checkPageActivity = () => {
-        var i = 0, diff = 0, d = Date.now();
-
-        var timeoutFn = () => {
-            diff += (Date.now() - d);
-            timer = setTimeout(timeoutFn, 0);
-            if (i++==50) {
-                clearTimeout(timer);
-                average =  diff / i;
-                if (average > maximumAverage) {
-                    checkPageActivity();
-                } else {
-                    if(areDoneVarAllTrue()) {
-                        isDone = true;
-                        console.warn('Sending Idle Event');
-                        $rootScope.$broadcast('Idle');
-                    }
-                }
-            }
-            d = Date.now();
-        };
-
-        var average = null;
-        var timer = setTimeout(timeoutFn, 0);
-    };
-*/
+   
     const done = (from?:string) => {
         $log.dev('engineQueue.isDone()', from, doneVar);
         if(isDone) {
             return isDone;
         }
-        if(areDoneVarAllTrue()) {
+        if(areDoneVarAllTrue() && $rootScope.exception === false) {
             isDone = true;
-            const Event = $window['Event'];
-            const dispatchEvent = $window.dispatchEvent;
-            const IdleEvent = new Event('Idle');
-            dispatchEvent(IdleEvent);
-            $rootScope.$broadcast('InternIdle');
+
+            if($window['onServer'] === true) {
+
+                //todo uncomment this
+                //console.log('GOing to throw an error');
+                //throw new Error('testerror');
+
+                socket.emit('IDLE', {
+                    html: document.documentElement.outerHTML,
+                    doctype: new XMLSerializer().serializeToString(document.doctype),
+                    url: window.location.href,
+                    uid: $window['serverConfig'].uid
+                });
+
+                socket.on('IDLE'+ $window['serverConfig'].uid, function() {
+                    const Event = $window['Event'];
+                    const dispatchEvent = $window.dispatchEvent;
+                    const IdleEvent = new Event('Idle');
+                    dispatchEvent(IdleEvent);
+                    $rootScope.$broadcast('InternIdle');
+                });
+            } else {
+                const Event = $window['Event'];
+                const dispatchEvent = $window.dispatchEvent;
+                const IdleEvent = new Event('Idle');
+                dispatchEvent(IdleEvent);
+                console.log('IDLE');
+                $rootScope.$broadcast('InternIdle');
+            }
         }
         return isDone;
     };

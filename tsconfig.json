@@ -9,7 +9,8 @@
         "diagnostics": true,
         "listFiles": true,
         "pretty": true,
-        "watch": true
+        "watch": true,
+        "outDir": "ignore"
     },
     "files": [
         "src/index.ts"
