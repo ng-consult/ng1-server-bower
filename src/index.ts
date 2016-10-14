@@ -9,6 +9,7 @@ import TimeoutValueProvider from './provider/timeoutValue';
 import {CacheFactory, TemplateCache, CacheFactoryConfig} from './decorator/cacheFactory';
 import SocketFactory from './factory/Socket';
 import ExceptionHandler from './decorator/exceptionHandler';
+import TemplateRequest from './decorator/templateRequest';
 
 angular.module('server', [])
     .provider('timeoutValue', TimeoutValueProvider)
@@ -16,14 +17,15 @@ angular.module('server', [])
     .decorator('$exceptionHandler', ['$delegate', '$log', '$window', ExceptionHandler])
 
     .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', CounterFactory])
-    .factory('engineQueue', ['$log', '$rootScope', '$window', 'socket', EngineQueue])
+    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory','socket', EngineQueue])
     .factory('socket', [SocketFactory])
-    .factory('httpInterceptorQueue', ['$q', '$log', 'counter', HttpInterceptorQueue])
+    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'counter', HttpInterceptorQueue])
 
     .decorator('$q', ['$delegate', 'counter', Q])
     .decorator('$log', ['$delegate', 'socket', '$window', Log])
     .decorator('$cacheFactory', ['$delegate', CacheFactory])
     .decorator('$templateCache', ['$cacheFactory', TemplateCache])
+    .decorator('$templateRequest', ['$delegate', TemplateRequest])
 
     .provider('cacheFactoryConfig', CacheFactoryConfig)
     .config( ($httpProvider) => {
@@ -40,6 +42,7 @@ angular.module('server', [])
             };
         }
 
+        
 
         $window.onerror = function handleGlobalError( message, fileName, lineNumber, columnNumber, error ) {
             // If this browser does not pass-in the original error object, let's
@@ -57,7 +60,7 @@ angular.module('server', [])
             // Pass of the error to the original error handler.
 
             return false;
-            return originalErrorHandler.apply( $window, arguments ) ;
+            //return originalErrorHandler.apply( $window, arguments ) ;
 
         };
         
@@ -68,14 +71,13 @@ angular.module('server', [])
                 const script = document.createElement('script');
                 $window.document.head.appendChild(script);
                 script.onload = () => {
-                    console.log('IO SCRIPT LOADED', JSON.stringify('http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+                    console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
                     if(typeof $window['io'] === 'undefined') {
                         throw new Error('It seems IO didnt load inside ngApp');
                     }
                     socket.connect($window.serverConfig.socketHostname);
                 };
-                script.src = 'http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
-
+                script.src = $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
             }
         }
 
@@ -113,6 +115,7 @@ angular.module('server', [])
 
         // REST CACHE SECTION
         $http.defaults.cache = true;
+        //todo turn it off depending on config
 
         //throw new Error('test');
 

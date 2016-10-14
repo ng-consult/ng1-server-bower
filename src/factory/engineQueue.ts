@@ -1,9 +1,18 @@
 import {IEngineQueue} from './../interfaces/definitions';
 
-const EngineQueue = ($log, $rootScope, $window: Window, socket): IEngineQueue => {
+const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket): IEngineQueue => {
 
     const doneVar = {};
-    
+
+    const dependencies = {};
+    const addDependency = (url: string, cacheId: string) => {
+        if(typeof dependencies[cacheId] === 'undefined') {
+            dependencies[cacheId] = [];
+        }
+        dependencies[cacheId].push(url);
+    };
+
+    $window['ngIdle'] = false;
     $rootScope.exception = false;
 
     //makes sure that when an exception occurs, the IDLE state is NOT triggered
@@ -24,15 +33,27 @@ const EngineQueue = ($log, $rootScope, $window: Window, socket): IEngineQueue =>
 
     let isDone = false;
 
-    const areDoneVarAllTrue = () => {
+    const areDoneVarAllTrue = (): boolean => {
         for(var key in doneVar) {
             if(!doneVar[key]) { return false;}
         }
         return true;
     };
 
-   
-    const done = (from?:string) => {
+    const getExportedCache = () => {
+        const exportedCache = {};
+        for(let cacheId in dependencies) {
+            exportedCache[cacheId] = {};
+            const cachedUrls = $cacheFactory.export(cacheId);
+            dependencies[cacheId].forEach( (cachedUrl:string) => {
+                exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
+            });
+        }
+        console.log('cachedURLs = ', exportedCache);
+        return exportedCache;
+    };
+
+    const done = (from?:string): boolean => {
         $log.dev('engineQueue.isDone()', from, doneVar);
         if(isDone) {
             return isDone;
@@ -40,17 +61,31 @@ const EngineQueue = ($log, $rootScope, $window: Window, socket): IEngineQueue =>
         if(areDoneVarAllTrue() && $rootScope.exception === false) {
             isDone = true;
 
+            console.log($cacheFactory.exportAll());
+
+            console.log(dependencies);
+
+            $window['ngIdle'] = true;
+
+            console.log('exported cache', getExportedCache());
+
             if($window['onServer'] === true) {
 
                 //todo uncomment this
                 //console.log('GOing to throw an error');
                 //throw new Error('testerror');
 
+
+                //clean up the cacheContent
+
+
+
                 socket.emit('IDLE', {
                     html: document.documentElement.outerHTML,
                     doctype: new XMLSerializer().serializeToString(document.doctype),
                     url: window.location.href,
-                    uid: $window['serverConfig'].uid
+                    uid: $window['serverConfig'].uid,
+                    exportedCache: getExportedCache()
                 });
 
                 socket.on('IDLE'+ $window['serverConfig'].uid, function() {
@@ -74,7 +109,8 @@ const EngineQueue = ($log, $rootScope, $window: Window, socket): IEngineQueue =>
 
     return {
         isDone: done,
-        setStatus: setStatus
+        setStatus: setStatus,
+        addDependency: addDependency
     };
 };
 

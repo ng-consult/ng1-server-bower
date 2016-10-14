@@ -8,17 +8,19 @@ var timeoutValue_1 = require('./provider/timeoutValue');
 var cacheFactory_1 = require('./decorator/cacheFactory');
 var Socket_1 = require('./factory/Socket');
 var exceptionHandler_1 = require('./decorator/exceptionHandler');
+var templateRequest_1 = require('./decorator/templateRequest');
 angular.module('server', [])
     .provider('timeoutValue', timeoutValue_1.default)
     .decorator('$exceptionHandler', ['$delegate', '$log', '$window', exceptionHandler_1.default])
     .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', Counter_1.default])
-    .factory('engineQueue', ['$log', '$rootScope', '$window', 'socket', engineQueue_1.default])
+    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', engineQueue_1.default])
     .factory('socket', [Socket_1.default])
-    .factory('httpInterceptorQueue', ['$q', '$log', 'counter', httpInterceptorQueue_1.default])
+    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'counter', httpInterceptorQueue_1.default])
     .decorator('$q', ['$delegate', 'counter', q2_1.default])
     .decorator('$log', ['$delegate', 'socket', '$window', log_1.default])
     .decorator('$cacheFactory', ['$delegate', cacheFactory_1.CacheFactory])
     .decorator('$templateCache', ['$cacheFactory', cacheFactory_1.TemplateCache])
+    .decorator('$templateRequest', ['$delegate', templateRequest_1.default])
     .provider('cacheFactoryConfig', cacheFactory_1.CacheFactoryConfig)
     .config(function ($httpProvider) {
     $httpProvider.interceptors.push('httpInterceptorQueue');
@@ -40,7 +42,6 @@ angular.module('server', [])
         }
         $rootScope.exception = true;
         return false;
-        return originalErrorHandler.apply($window, arguments);
     };
     if ($window.onServer == true) {
         if (typeof $window['io'] !== 'undefined') {
@@ -50,13 +51,13 @@ angular.module('server', [])
             var script = document.createElement('script');
             $window.document.head.appendChild(script);
             script.onload = function () {
-                console.log('IO SCRIPT LOADED', JSON.stringify('http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+                console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
                 if (typeof $window['io'] === 'undefined') {
                     throw new Error('It seems IO didnt load inside ngApp');
                 }
                 socket.connect($window.serverConfig.socketHostname);
             };
-            script.src = 'http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
+            script.src = $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
         }
     }
     if (typeof $window.clientTimeoutValue === 'number') {
@@ -85,5 +86,4 @@ angular.module('server', [])
         });
     });
     $http.defaults.cache = true;
-    throw new Error('test');
 });

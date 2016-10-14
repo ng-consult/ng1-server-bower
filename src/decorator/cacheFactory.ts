@@ -8,6 +8,18 @@ interface CacheDataCollection<T> {
     [any: string]: CacheData<T>
 }
 
+interface ICacheFactory {
+    (cachedId: string, options: any)
+    export(cacheId: string): mapData,
+    exportAll(): any,
+    import(cacheId: string, data: mapData): void,
+    importAll(data: any): void,
+    delete(cacheId: string): void,
+    get()
+    info()
+    prototype: any
+}
+
 class CacheData<T> {
 
     private data: mapData;
@@ -45,92 +57,98 @@ class CacheData<T> {
 export const CacheFactory = ($delegate) => {
 
     let caches: CacheDataCollection<any> =  {};
-    
-    let $cacheFactory = function(cacheId: string, options) {
 
-        let cache;
-        try{
-            cache = $delegate(cacheId, options);
+    function getCacheFactory(): ICacheFactory {
+
+        let $cacheFactory = <ICacheFactory>function(cacheId: string, options) {
+
+            let cache;
+            try{
+                console.log('Delegating caching to ', cacheId, options);
+                cache = $delegate(cacheId, options);
+            }
+            catch(e) {
+                cache = $delegate.get(cacheId);
+            }
+
+            const Oput = cache.put;
+            const Oremove = cache.remove;
+
+            cache.put = (key: any, value: any) => {
+                caches[cacheId].set(key);
+                Oput.apply(cache, [key, value]);
+            };
+
+            cache.remove = (key: string) => {
+                caches[cacheId].delete(key);
+                Oremove.apply(cache, [key]);
+            };
+
+            caches[cacheId] = new CacheData(cacheId);
+
+            return cache;
+
         }
-        catch(e) {
 
-            cache = $delegate.get(cacheId);
-        }
+        $cacheFactory.prototype = $delegate.prototype;
 
-        const Oput = cache.put;
-        const Oremove = cache.remove;
+        $cacheFactory.export = (cacheId: string): mapData => {
+            if (typeof caches[cacheId] === 'undefined' ) {
+                throw new Error('$cacheFactory - iid - CacheId '+cacheId+' is not defined!');
+            }
+            const data = {};
 
-        cache.put = (key: any, value: any) => {
-            caches[cacheId].set(key);
-            Oput.apply(cache, [key, value]);
+            const cache = caches[cacheId];
+            const storedCache = $delegate.get(cacheId);
+            const keys =  cache.keys();
+
+            for(var key in keys) {
+                data[key] = storedCache.get(key);
+            }
+            return data;
         };
 
-        cache.remove = (key: string) => {
-            caches[cacheId].delete(key);
-            Oremove.apply(cache, [key]);
+        $cacheFactory.exportAll = () => {
+            var data = {};
+            for(var cacheId in caches) {
+                data[cacheId] = $cacheFactory.export(cacheId);
+            }
+            return data;
         };
 
-        caches[cacheId] = new CacheData(cacheId);
+        $cacheFactory.import = (cacheId:string, data: mapData): void => {
+            if (typeof caches[cacheId] === 'undefined' ) {
+                $cacheFactory(cacheId, {});
+            }
+            const storedCache = $delegate.get(cacheId);
 
-        return cache;
+            for(var key in data) {
+                storedCache.put(key, data[key]);
+            }
+        };
 
+        $cacheFactory.importAll = (data): void => {
+            for(var key in data) {
+                $cacheFactory.import(key, data[key]);
+            }
+        };
+
+        $cacheFactory.delete = (cacheId: string): void => {
+            if (typeof caches[cacheId] !== 'undefined' ) {
+                const  storedCache = $delegate.get(cacheId);
+                storedCache.removeAll();
+                storedCache.destroy();
+                delete caches[cacheId];
+            }
+        }
+        $cacheFactory.get = $delegate.get;
+        $cacheFactory.info = $delegate.info;
+
+        return $cacheFactory;
     }
 
-    $cacheFactory.prototype = $delegate.prototype;
+    return getCacheFactory();
 
-    $cacheFactory.export = (cacheId: string): mapData => {
-        if (typeof caches[cacheId] === 'undefined' ) {
-            throw new Error('$cacheFactory - iid - CacheId '+cacheId+' is not defined!');
-        }
-        const data = {};
-
-        const cache = caches[cacheId];
-        const storedCache = $delegate.get(cacheId);
-        const keys =  cache.keys();
-
-        for(var key in keys) {
-            data[key] = storedCache.get(key);
-        }
-        return data;
-    };
-
-    $cacheFactory.exportAll = () => {
-        var data = {};
-        for(var cacheId in caches) {
-            data[cacheId] = $cacheFactory.export(cacheId);
-        }
-        return data;
-    };
-
-    $cacheFactory.import = (cacheId:string, data: mapData): void => {
-        if (typeof caches[cacheId] === 'undefined' ) {
-            $cacheFactory(cacheId, {});
-        }
-        const storedCache = $delegate.get(cacheId);
-
-        for(var key in data) {
-            storedCache.put(key, data[key]);
-        }
-    };
-
-    $cacheFactory.importAll = (data): void => {
-        for(var key in data) {
-            $cacheFactory.import(key, data[key]);
-        }
-    };
-
-    $cacheFactory.delete = (cacheId: string): void => {
-        if (typeof caches[cacheId] !== 'undefined' ) {
-            const  storedCache = $delegate.get(cacheId);
-            storedCache.removeAll();
-            storedCache.destroy();
-            delete caches[cacheId];
-        }
-    }
-    $cacheFactory.get = $delegate.get;
-    $cacheFactory.info = $delegate.info;
-
-    return $cacheFactory;
 };
 
 

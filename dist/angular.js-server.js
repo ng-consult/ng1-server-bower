@@ -54,17 +54,19 @@
 	var cacheFactory_1 = __webpack_require__(7);
 	var Socket_1 = __webpack_require__(8);
 	var exceptionHandler_1 = __webpack_require__(9);
+	var templateRequest_1 = __webpack_require__(10);
 	angular.module('server', [])
 	    .provider('timeoutValue', timeoutValue_1.default)
 	    .decorator('$exceptionHandler', ['$delegate', '$log', '$window', exceptionHandler_1.default])
 	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', Counter_1.default])
-	    .factory('engineQueue', ['$log', '$rootScope', '$window', 'socket', engineQueue_1.default])
+	    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', engineQueue_1.default])
 	    .factory('socket', [Socket_1.default])
-	    .factory('httpInterceptorQueue', ['$q', '$log', 'counter', httpInterceptorQueue_1.default])
+	    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'counter', httpInterceptorQueue_1.default])
 	    .decorator('$q', ['$delegate', 'counter', q2_1.default])
 	    .decorator('$log', ['$delegate', 'socket', '$window', log_1.default])
 	    .decorator('$cacheFactory', ['$delegate', cacheFactory_1.CacheFactory])
 	    .decorator('$templateCache', ['$cacheFactory', cacheFactory_1.TemplateCache])
+	    .decorator('$templateRequest', ['$delegate', templateRequest_1.default])
 	    .provider('cacheFactoryConfig', cacheFactory_1.CacheFactoryConfig)
 	    .config(function ($httpProvider) {
 	    $httpProvider.interceptors.push('httpInterceptorQueue');
@@ -86,7 +88,6 @@
 	        }
 	        $rootScope.exception = true;
 	        return false;
-	        return originalErrorHandler.apply($window, arguments);
 	    };
 	    if ($window.onServer == true) {
 	        if (typeof $window['io'] !== 'undefined') {
@@ -96,13 +97,13 @@
 	            var script = document.createElement('script');
 	            $window.document.head.appendChild(script);
 	            script.onload = function () {
-	                console.log('IO SCRIPT LOADED', JSON.stringify('http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+	                console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
 	                if (typeof $window['io'] === 'undefined') {
 	                    throw new Error('It seems IO didnt load inside ngApp');
 	                }
 	                socket.connect($window.serverConfig.socketHostname);
 	            };
-	            script.src = 'http://' + $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
+	            script.src = $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
 	        }
 	    }
 	    if (typeof $window.clientTimeoutValue === 'number') {
@@ -140,13 +141,40 @@
 
 	'use strict';
 	var _this = this;
-	var HttpInterceptorQueue = function ($q, $log, counter) {
+	var HttpInterceptorQueue = function ($q, $log, engineQueue, counter) {
 	    $log.dev('HttpInterceptor', 'instanciated', _this);
 	    var hCounter = counter.create('http');
+	    var cacheMapping = {};
 	    return {
 	        request: function (config) {
 	            $log.dev('httpRequest', config.url);
 	            hCounter.incr();
+	            if (window['onServer'] && typeof window['serverConfig']['cacheServer'] !== 'undefined') {
+	                if (config.url.indexOf(window['serverConfig']['cacheServer']) === -1) {
+	                    config.url = window['serverConfig']['cacheServer']
+	                        + '/get?url='
+	                        + encodeURIComponent(config.url)
+	                        + '&original-url='
+	                        + encodeURIComponent(window.location.href);
+	                }
+	            }
+	            else {
+	                if (config.url.indexOf('http://127.0.0.1:8883/get?url=') === -1) {
+	                    config.url = 'http://127.0.0.1:8883/get?url='
+	                        + encodeURIComponent(config.url)
+	                        + '&original-url='
+	                        + encodeURIComponent(window.location.href);
+	                }
+	            }
+	            if (window['ngIdle'] === false) {
+	                if (config.cache) {
+	                    var cacheName = config.cache.info();
+	                    cacheMapping[config.url] = cacheName.id;
+	                }
+	                else {
+	                    cacheMapping[config.url] = '$http';
+	                }
+	            }
 	            return $q.when(config);
 	        },
 	        requestError: function (rejection) {
@@ -154,6 +182,9 @@
 	            return $q.reject(rejection);
 	        },
 	        response: function (response) {
+	            if (response.headers('ngservercached') === 'yes' && window['ngIdle'] === false) {
+	                engineQueue.addDependency(response.config.url, cacheMapping[response.config.url]);
+	            }
 	            $log.dev('httpResponse', response.config.url);
 	            hCounter.decr();
 	            return $q.when(response);
@@ -223,8 +254,16 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var EngineQueue = function ($log, $rootScope, $window, socket) {
+	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket) {
 	    var doneVar = {};
+	    var dependencies = {};
+	    var addDependency = function (url, cacheId) {
+	        if (typeof dependencies[cacheId] === 'undefined') {
+	            dependencies[cacheId] = [];
+	        }
+	        dependencies[cacheId].push(url);
+	    };
+	    $window['ngIdle'] = false;
 	    $rootScope.exception = false;
 	    $window.addEventListener('ExceptionHandler', function () {
 	        $rootScope.exception = true;
@@ -247,6 +286,21 @@
 	        }
 	        return true;
 	    };
+	    var getExportedCache = function () {
+	        var exportedCache = {};
+	        var _loop_1 = function(cacheId) {
+	            exportedCache[cacheId] = {};
+	            var cachedUrls = $cacheFactory.export(cacheId);
+	            dependencies[cacheId].forEach(function (cachedUrl) {
+	                exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
+	            });
+	        };
+	        for (var cacheId in dependencies) {
+	            _loop_1(cacheId);
+	        }
+	        console.log('cachedURLs = ', exportedCache);
+	        return exportedCache;
+	    };
 	    var done = function (from) {
 	        $log.dev('engineQueue.isDone()', from, doneVar);
 	        if (isDone) {
@@ -254,12 +308,17 @@
 	        }
 	        if (areDoneVarAllTrue() && $rootScope.exception === false) {
 	            isDone = true;
+	            console.log($cacheFactory.exportAll());
+	            console.log(dependencies);
+	            $window['ngIdle'] = true;
+	            console.log('exported cache', getExportedCache());
 	            if ($window['onServer'] === true) {
 	                socket.emit('IDLE', {
 	                    html: document.documentElement.outerHTML,
 	                    doctype: new XMLSerializer().serializeToString(document.doctype),
 	                    url: window.location.href,
-	                    uid: $window['serverConfig'].uid
+	                    uid: $window['serverConfig'].uid,
+	                    exportedCache: getExportedCache()
 	                });
 	                socket.on('IDLE' + $window['serverConfig'].uid, function () {
 	                    var Event = $window['Event'];
@@ -282,7 +341,8 @@
 	    };
 	    return {
 	        isDone: done,
-	        setStatus: setStatus
+	        setStatus: setStatus,
+	        addDependency: addDependency
 	    };
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -544,73 +604,77 @@
 	}());
 	exports.CacheFactory = function ($delegate) {
 	    var caches = {};
-	    var $cacheFactory = function (cacheId, options) {
-	        var cache;
-	        try {
-	            cache = $delegate(cacheId, options);
-	        }
-	        catch (e) {
-	            cache = $delegate.get(cacheId);
-	        }
-	        var Oput = cache.put;
-	        var Oremove = cache.remove;
-	        cache.put = function (key, value) {
-	            caches[cacheId].set(key);
-	            Oput.apply(cache, [key, value]);
+	    function getCacheFactory() {
+	        var $cacheFactory = function (cacheId, options) {
+	            var cache;
+	            try {
+	                console.log('Delegating caching to ', cacheId, options);
+	                cache = $delegate(cacheId, options);
+	            }
+	            catch (e) {
+	                cache = $delegate.get(cacheId);
+	            }
+	            var Oput = cache.put;
+	            var Oremove = cache.remove;
+	            cache.put = function (key, value) {
+	                caches[cacheId].set(key);
+	                Oput.apply(cache, [key, value]);
+	            };
+	            cache.remove = function (key) {
+	                caches[cacheId].delete(key);
+	                Oremove.apply(cache, [key]);
+	            };
+	            caches[cacheId] = new CacheData(cacheId);
+	            return cache;
 	        };
-	        cache.remove = function (key) {
-	            caches[cacheId].delete(key);
-	            Oremove.apply(cache, [key]);
-	        };
-	        caches[cacheId] = new CacheData(cacheId);
-	        return cache;
-	    };
-	    $cacheFactory.prototype = $delegate.prototype;
-	    $cacheFactory.export = function (cacheId) {
-	        if (typeof caches[cacheId] === 'undefined') {
-	            throw new Error('$cacheFactory - iid - CacheId ' + cacheId + ' is not defined!');
-	        }
-	        var data = {};
-	        var cache = caches[cacheId];
-	        var storedCache = $delegate.get(cacheId);
-	        var keys = cache.keys();
-	        for (var key in keys) {
-	            data[key] = storedCache.get(key);
-	        }
-	        return data;
-	    };
-	    $cacheFactory.exportAll = function () {
-	        var data = {};
-	        for (var cacheId in caches) {
-	            data[cacheId] = $cacheFactory.export(cacheId);
-	        }
-	        return data;
-	    };
-	    $cacheFactory.import = function (cacheId, data) {
-	        if (typeof caches[cacheId] === 'undefined') {
-	            $cacheFactory(cacheId, {});
-	        }
-	        var storedCache = $delegate.get(cacheId);
-	        for (var key in data) {
-	            storedCache.put(key, data[key]);
-	        }
-	    };
-	    $cacheFactory.importAll = function (data) {
-	        for (var key in data) {
-	            $cacheFactory.import(key, data[key]);
-	        }
-	    };
-	    $cacheFactory.delete = function (cacheId) {
-	        if (typeof caches[cacheId] !== 'undefined') {
+	        $cacheFactory.prototype = $delegate.prototype;
+	        $cacheFactory.export = function (cacheId) {
+	            if (typeof caches[cacheId] === 'undefined') {
+	                throw new Error('$cacheFactory - iid - CacheId ' + cacheId + ' is not defined!');
+	            }
+	            var data = {};
+	            var cache = caches[cacheId];
 	            var storedCache = $delegate.get(cacheId);
-	            storedCache.removeAll();
-	            storedCache.destroy();
-	            delete caches[cacheId];
-	        }
-	    };
-	    $cacheFactory.get = $delegate.get;
-	    $cacheFactory.info = $delegate.info;
-	    return $cacheFactory;
+	            var keys = cache.keys();
+	            for (var key in keys) {
+	                data[key] = storedCache.get(key);
+	            }
+	            return data;
+	        };
+	        $cacheFactory.exportAll = function () {
+	            var data = {};
+	            for (var cacheId in caches) {
+	                data[cacheId] = $cacheFactory.export(cacheId);
+	            }
+	            return data;
+	        };
+	        $cacheFactory.import = function (cacheId, data) {
+	            if (typeof caches[cacheId] === 'undefined') {
+	                $cacheFactory(cacheId, {});
+	            }
+	            var storedCache = $delegate.get(cacheId);
+	            for (var key in data) {
+	                storedCache.put(key, data[key]);
+	            }
+	        };
+	        $cacheFactory.importAll = function (data) {
+	            for (var key in data) {
+	                $cacheFactory.import(key, data[key]);
+	            }
+	        };
+	        $cacheFactory.delete = function (cacheId) {
+	            if (typeof caches[cacheId] !== 'undefined') {
+	                var storedCache = $delegate.get(cacheId);
+	                storedCache.removeAll();
+	                storedCache.destroy();
+	                delete caches[cacheId];
+	            }
+	        };
+	        $cacheFactory.get = $delegate.get;
+	        $cacheFactory.info = $delegate.info;
+	        return $cacheFactory;
+	    }
+	    return getCacheFactory();
 	};
 	exports.TemplateCache = function ($cacheFactory) {
 	    return $cacheFactory('templates');
@@ -710,6 +774,29 @@
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = ExceptionHandler;
+
+
+/***/ },
+/* 10 */
+/***/ function(module, exports) {
+
+	"use strict";
+	var TemplateRequest = function ($delegate, $window) {
+	    var $TemplateRequest = function (tpl, ignoreRequestError) {
+	        console.log('Inside template request, querying ', tpl, ignoreRequestError);
+	        if (typeof tpl === 'string') {
+	            tpl = 'http://127.0.0.1:8883/get?url='
+	                + encodeURIComponent(tpl)
+	                + '&original-url='
+	                + encodeURIComponent(window.location.href);
+	        }
+	        var result = $delegate(tpl, ignoreRequestError);
+	        return result;
+	    };
+	    return $TemplateRequest;
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = TemplateRequest;
 
 
 /***/ }

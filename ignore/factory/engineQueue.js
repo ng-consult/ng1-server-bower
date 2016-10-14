@@ -1,6 +1,14 @@
 "use strict";
-var EngineQueue = function ($log, $rootScope, $window, socket) {
+var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket) {
     var doneVar = {};
+    var dependencies = {};
+    var addDependency = function (url, cacheId) {
+        if (typeof dependencies[cacheId] === 'undefined') {
+            dependencies[cacheId] = [];
+        }
+        dependencies[cacheId].push(url);
+    };
+    $window['ngIdle'] = false;
     $rootScope.exception = false;
     $window.addEventListener('ExceptionHandler', function () {
         $rootScope.exception = true;
@@ -23,6 +31,21 @@ var EngineQueue = function ($log, $rootScope, $window, socket) {
         }
         return true;
     };
+    var getExportedCache = function () {
+        var exportedCache = {};
+        var _loop_1 = function(cacheId) {
+            exportedCache[cacheId] = {};
+            var cachedUrls = $cacheFactory.export(cacheId);
+            dependencies[cacheId].forEach(function (cachedUrl) {
+                exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
+            });
+        };
+        for (var cacheId in dependencies) {
+            _loop_1(cacheId);
+        }
+        console.log('cachedURLs = ', exportedCache);
+        return exportedCache;
+    };
     var done = function (from) {
         $log.dev('engineQueue.isDone()', from, doneVar);
         if (isDone) {
@@ -30,12 +53,17 @@ var EngineQueue = function ($log, $rootScope, $window, socket) {
         }
         if (areDoneVarAllTrue() && $rootScope.exception === false) {
             isDone = true;
+            console.log($cacheFactory.exportAll());
+            console.log(dependencies);
+            $window['ngIdle'] = true;
+            console.log('exported cache', getExportedCache());
             if ($window['onServer'] === true) {
                 socket.emit('IDLE', {
                     html: document.documentElement.outerHTML,
                     doctype: new XMLSerializer().serializeToString(document.doctype),
                     url: window.location.href,
-                    uid: $window['serverConfig'].uid
+                    uid: $window['serverConfig'].uid,
+                    exportedCache: getExportedCache()
                 });
                 socket.on('IDLE' + $window['serverConfig'].uid, function () {
                     var Event = $window['Event'];
@@ -58,7 +86,8 @@ var EngineQueue = function ($log, $rootScope, $window, socket) {
     };
     return {
         isDone: done,
-        setStatus: setStatus
+        setStatus: setStatus,
+        addDependency: addDependency
     };
 };
 Object.defineProperty(exports, "__esModule", { value: true });

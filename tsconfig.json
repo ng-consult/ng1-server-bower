@@ -13,6 +13,9 @@
         "outDir": "ignore"
     },
     "files": [
-        "src/index.ts"
+        "src/index.ts",
+        "src/factory/httpInterceptorQueue.ts",
+        "src/decorator/cacheFactory.ts",
+        "src/provider/templateRequest.ts"
     ]
 }
