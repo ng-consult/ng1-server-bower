@@ -5,10 +5,9 @@ var SocketFactory = function () {
     var queueOn = [];
     var connected = false;
     var connect = function (socketServer) {
-        console.log('connecting to socket server ', socketServer);
         socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
         socket.on('connect', function () {
-            console.log('connected');
+            console.log('DDD: connected to ', socketServer);
             connected = true;
             var elem;
             while (elem = queueEmit.shift()) {
@@ -34,7 +33,7 @@ var SocketFactory = function () {
         }
     };
     var on = function (key, cb) {
-        console.log('Received Event ', key);
+        console.log('DDD: Received Event ', key);
         if (!connected) {
             queueOn.push({ key: key, cb: cb });
         }

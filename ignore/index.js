@@ -51,7 +51,6 @@ angular.module('server', [])
             var script = document.createElement('script');
             $window.document.head.appendChild(script);
             script.onload = function () {
-                console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
                 if (typeof $window['io'] === 'undefined') {
                     throw new Error('It seems IO didnt load inside ngApp');
                 }
@@ -86,4 +85,7 @@ angular.module('server', [])
         });
     });
     $http.defaults.cache = true;
+    if (typeof $window['ngServerCache'] !== 'undefined') {
+        $cacheFactory.importAll($window['ngServerCache']);
+    }
 });

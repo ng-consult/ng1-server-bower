@@ -53,10 +53,7 @@ var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket) {
         }
         if (areDoneVarAllTrue() && $rootScope.exception === false) {
             isDone = true;
-            console.log($cacheFactory.exportAll());
-            console.log(dependencies);
             $window['ngIdle'] = true;
-            console.log('exported cache', getExportedCache());
             if ($window['onServer'] === true) {
                 socket.emit('IDLE', {
                     html: document.documentElement.outerHTML,

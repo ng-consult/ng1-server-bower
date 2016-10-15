@@ -71,7 +71,7 @@ angular.module('server', [])
                 const script = document.createElement('script');
                 $window.document.head.appendChild(script);
                 script.onload = () => {
-                    console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+                    //console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
                     if(typeof $window['io'] === 'undefined') {
                         throw new Error('It seems IO didnt load inside ngApp');
                     }
@@ -118,6 +118,10 @@ angular.module('server', [])
         //todo turn it off depending on config
 
         //throw new Error('test');
+
+        if(typeof $window['ngServerCache'] !== 'undefined') {
+            $cacheFactory.importAll($window['ngServerCache']);
+        }
 
 
     });

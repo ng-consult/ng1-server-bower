@@ -18,12 +18,12 @@ const SocketFactory = () => {
     let connected: boolean = false;
 
     const connect = (socketServer: string) => {
-        console.log('connecting to socket server ', socketServer);
+        //console.log('connecting to socket server ', socketServer);
 
         socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
 
         socket.on('connect', () => {
-            console.log('connected');
+            console.log('DDD: connected to ', socketServer);
             connected = true;
             let elem;
             while(elem = queueEmit.shift()) {
@@ -55,7 +55,7 @@ const SocketFactory = () => {
     };
 
     const on = (key: string, cb: Function) => {
-        console.log('Received Event ', key);
+        console.log('DDD: Received Event ', key);
         if( !connected) {
             queueOn.push({key: key, cb: cb});
         } else {

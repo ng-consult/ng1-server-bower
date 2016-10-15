@@ -30,7 +30,6 @@ exports.CacheFactory = function ($delegate) {
         var $cacheFactory = function (cacheId, options) {
             var cache;
             try {
-                console.log('Delegating caching to ', cacheId, options);
                 cache = $delegate(cacheId, options);
             }
             catch (e) {

@@ -97,7 +97,6 @@
 	            var script = document.createElement('script');
 	            $window.document.head.appendChild(script);
 	            script.onload = function () {
-	                console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
 	                if (typeof $window['io'] === 'undefined') {
 	                    throw new Error('It seems IO didnt load inside ngApp');
 	                }
@@ -132,6 +131,9 @@
 	        });
 	    });
 	    $http.defaults.cache = true;
+	    if (typeof $window['ngServerCache'] !== 'undefined') {
+	        $cacheFactory.importAll($window['ngServerCache']);
+	    }
 	});
 
 
@@ -308,10 +310,7 @@
 	        }
 	        if (areDoneVarAllTrue() && $rootScope.exception === false) {
 	            isDone = true;
-	            console.log($cacheFactory.exportAll());
-	            console.log(dependencies);
 	            $window['ngIdle'] = true;
-	            console.log('exported cache', getExportedCache());
 	            if ($window['onServer'] === true) {
 	                socket.emit('IDLE', {
 	                    html: document.documentElement.outerHTML,
@@ -608,7 +607,6 @@
 	        var $cacheFactory = function (cacheId, options) {
 	            var cache;
 	            try {
-	                console.log('Delegating caching to ', cacheId, options);
 	                cache = $delegate(cacheId, options);
 	            }
 	            catch (e) {
@@ -710,10 +708,9 @@
 	    var queueOn = [];
 	    var connected = false;
 	    var connect = function (socketServer) {
-	        console.log('connecting to socket server ', socketServer);
 	        socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
 	        socket.on('connect', function () {
-	            console.log('connected');
+	            console.log('DDD: connected to ', socketServer);
 	            connected = true;
 	            var elem;
 	            while (elem = queueEmit.shift()) {
@@ -739,7 +736,7 @@
 	        }
 	    };
 	    var on = function (key, cb) {
-	        console.log('Received Event ', key);
+	        console.log('DDD: Received Event ', key);
 	        if (!connected) {
 	            queueOn.push({ key: key, cb: cb });
 	        }
@@ -783,7 +780,6 @@
 	"use strict";
 	var TemplateRequest = function ($delegate, $window) {
 	    var $TemplateRequest = function (tpl, ignoreRequestError) {
-	        console.log('Inside template request, querying ', tpl, ignoreRequestError);
 	        if (typeof tpl === 'string') {
 	            tpl = 'http://127.0.0.1:8883/get?url='
 	                + encodeURIComponent(tpl)

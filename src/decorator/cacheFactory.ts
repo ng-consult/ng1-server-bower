@@ -15,8 +15,8 @@ interface ICacheFactory {
     import(cacheId: string, data: mapData): void,
     importAll(data: any): void,
     delete(cacheId: string): void,
-    get()
-    info()
+    get(),
+    info(),
     prototype: any
 }
 
@@ -64,7 +64,6 @@ export const CacheFactory = ($delegate) => {
 
             let cache;
             try{
-                console.log('Delegating caching to ', cacheId, options);
                 cache = $delegate(cacheId, options);
             }
             catch(e) {
@@ -88,7 +87,7 @@ export const CacheFactory = ($delegate) => {
 
             return cache;
 
-        }
+        };
 
         $cacheFactory.prototype = $delegate.prototype;
 
@@ -140,7 +139,7 @@ export const CacheFactory = ($delegate) => {
                 storedCache.destroy();
                 delete caches[cacheId];
             }
-        }
+        };
         $cacheFactory.get = $delegate.get;
         $cacheFactory.info = $delegate.info;
 
