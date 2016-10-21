@@ -46,25 +46,39 @@ If detected, `$cacheFactory` will preload all the cached data ($http results, an
 - Uses the $log server config data to write on the server file system when the angular app is loaded on the server side
 - It adds a $log.dev() method for debugging purposes 
    
-#Some config Providers
+#Some config Data
 
-**cacheFactoryConfig**
-
+Uses the Factory `serverConfig` inside the `run()`.
+ 
 ```javascript
-    cacheFactoryConfig.setDefaultCache(boolean)
+
+angular.module('your-app', [])
+    .run(function(serverConfig) {
+    
+        serverConfig.setRestServer('http:/wwwww.yourdomain.com');
+    
+    });
+
 ```
 
-This will tell your app to subsequently **continue** or **stop** caching the $http requests after they have been re-played on page load.
+ 
+**setRestServer(url: string)**
 
-**timeoutValue**
+eEnables the server side REST caching, by forwarding all $http calls and template calls to this proxy URL.
 
-```javascript
-    timeoutValue.set(100);
-```
+This specific scenario works even if the server side page rendering is disabled.
+ 
+**setTimeoutValue(time: number)**
 
 Internally, this module check with a default interval of `200ms` when `$digest`, `$http` & `$q` are resolved.
 It is possible to change it at run time, but it should be used only for debugging/development goals.
-  
+
+
+**setDefaultHtpCache(cache: boolean)**
+
+This will tell your app to subsequently **continue** or **stop** caching the $http requests after they have been re-played on page load.
+
+This setting is only effective when the page has been server pre-rendered.
 
 #contributing
 

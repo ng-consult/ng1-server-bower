@@ -51,11 +51,11 @@
 	var q2_1 = __webpack_require__(4);
 	var Counter_1 = __webpack_require__(5);
 	var cacheFactory_1 = __webpack_require__(6);
-	var serverConfig_1 = __webpack_require__(11);
+	var serverConfig_1 = __webpack_require__(7);
 	var Socket_1 = __webpack_require__(8);
 	var exceptionHandler_1 = __webpack_require__(9);
 	var templateRequest_1 = __webpack_require__(10);
-	var windowError_1 = __webpack_require__(12);
+	var windowError_1 = __webpack_require__(11);
 	angular.module('server', [])
 	    .factory('serverConfig', ['$window', serverConfig_1.default])
 	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', Counter_1.default])
@@ -653,7 +653,111 @@
 
 
 /***/ },
-/* 7 */,
+/* 7 */
+/***/ function(module, exports) {
+
+	"use strict";
+	var ServerConfigFactory = function ($window) {
+	    var initialized = false;
+	    var httpCache = true;
+	    var restServer = null;
+	    var timeoutValue = 200;
+	    var server = false;
+	    var uid = null;
+	    var socketServer = null;
+	    var restCache = null;
+	    var debug = false;
+	    var init = function () {
+	        if (initialized)
+	            return;
+	        initialized = true;
+	        if (angular.isDefined($window['onServer']) && $window['onServer'] === true) {
+	            server = true;
+	        }
+	        if (angular.isDefined($window['serverConfig'])) {
+	            if (angular.isDefined($window['serverConfig'].clientTimeoutValue)) {
+	                timeoutValue = $window['serverConfig'].clientTimeoutValue;
+	            }
+	            if (angular.isDefined($window['serverConfig'].restServerURL)) {
+	                restServer = $window['serverConfig'].restServerURL;
+	            }
+	            if (angular.isDefined($window['serverConfig'].uid)) {
+	                uid = $window['serverConfig'].uid;
+	            }
+	            if (angular.isDefined($window['serverConfig'].socketServerURL)) {
+	                socketServer = $window['serverConfig'].socketServerURL;
+	            }
+	            if (angular.isDefined($window['ngServerCache'])) {
+	                restCache = $window['ngServerCache'];
+	            }
+	            if (angular.isDefined($window['serverConfig'].debug)) {
+	                debug = $window['serverConfig'].debug;
+	            }
+	            if (angular.isDefined($window['serverConfig'].httpCache)) {
+	                httpCache = $window['serverConfig'].httpCache;
+	            }
+	        }
+	        if (server && (socketServer === null || restServer === null || uid === null)) {
+	            throw new Error('invalid serverConfig: uid, socketServer or restServer missing ');
+	        }
+	    };
+	    var hasRestCache = function () {
+	        return restCache !== null;
+	    };
+	    var onServer = function () {
+	        return server;
+	    };
+	    var getDebug = function () {
+	        return debug;
+	    };
+	    var getDefaultHttpCache = function () {
+	        return httpCache;
+	    };
+	    var getRestCache = function () {
+	        return restCache;
+	    };
+	    var getRestServer = function () {
+	        return restServer;
+	    };
+	    var getSocketServer = function () {
+	        return socketServer;
+	    };
+	    var getTimeoutValue = function () {
+	        return timeoutValue;
+	    };
+	    var getUID = function () {
+	        return uid;
+	    };
+	    var setDefaultHtpCache = function (value) {
+	        httpCache = value;
+	    };
+	    var setRestServer = function (value) {
+	        restServer = value;
+	    };
+	    var setTimeoutValue = function (value) {
+	        timeoutValue = value;
+	    };
+	    return {
+	        init: init,
+	        hasRestCache: hasRestCache,
+	        onServer: onServer,
+	        getDebug: getDebug,
+	        getDefaultHttpCache: getDefaultHttpCache,
+	        getRestCache: getRestCache,
+	        getRestServer: getRestServer,
+	        getSocketServer: getSocketServer,
+	        getTimeoutValue: getTimeoutValue,
+	        getUID: getUID,
+	        setDefaultHtpCache: setDefaultHtpCache,
+	        setRestServer: setRestServer,
+	        setTimeoutValue: setTimeoutValue
+	    };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ServerConfigFactory;
+
+
+/***/ },
 /* 8 */
 /***/ function(module, exports) {
 
@@ -769,111 +873,6 @@
 
 /***/ },
 /* 11 */
-/***/ function(module, exports) {
-
-	"use strict";
-	var ServerConfigFactory = function ($window) {
-	    var initialized = false;
-	    var httpCache = true;
-	    var restServer = null;
-	    var timeoutValue = 200;
-	    var server = false;
-	    var uid = null;
-	    var socketServer = null;
-	    var restCache = null;
-	    var debug = false;
-	    var init = function () {
-	        if (initialized)
-	            return;
-	        initialized = true;
-	        if (angular.isDefined($window['onServer']) && $window['onServer'] === true) {
-	            server = true;
-	        }
-	        if (angular.isDefined($window['serverConfig'])) {
-	            if (angular.isDefined($window['serverConfig'].clientTimeoutValue)) {
-	                timeoutValue = $window['serverConfig'].clientTimeoutValue;
-	            }
-	            if (angular.isDefined($window['serverConfig'].restServerURL)) {
-	                restServer = $window['serverConfig'].restServerURL;
-	            }
-	            if (angular.isDefined($window['serverConfig'].uid)) {
-	                uid = $window['serverConfig'].uid;
-	            }
-	            if (angular.isDefined($window['serverConfig'].socketServerURL)) {
-	                socketServer = $window['serverConfig'].socketServerURL;
-	            }
-	            if (angular.isDefined($window['ngServerCache'])) {
-	                restCache = $window['ngServerCache'];
-	            }
-	            if (angular.isDefined($window['serverConfig'].debug)) {
-	                debug = $window['serverConfig'].debug;
-	            }
-	            if (angular.isDefined($window['serverConfig'].httpCache)) {
-	                httpCache = $window['serverConfig'].httpCache;
-	            }
-	        }
-	        if (server && (socketServer === null || restServer === null || uid === null)) {
-	            throw new Error('invalid serverConfig: uid, socketServer or restServer missing ');
-	        }
-	    };
-	    var hasRestCache = function () {
-	        return restCache !== null;
-	    };
-	    var onServer = function () {
-	        return server;
-	    };
-	    var getDebug = function () {
-	        return debug;
-	    };
-	    var getDefaultHttpCache = function () {
-	        return httpCache;
-	    };
-	    var getRestCache = function () {
-	        return restCache;
-	    };
-	    var getRestServer = function () {
-	        return restServer;
-	    };
-	    var getSocketServer = function () {
-	        return socketServer;
-	    };
-	    var getTimeoutValue = function () {
-	        return timeoutValue;
-	    };
-	    var getUID = function () {
-	        return uid;
-	    };
-	    var setDefaultHtpCache = function (value) {
-	        httpCache = value;
-	    };
-	    var setRestServer = function (value) {
-	        restServer = value;
-	    };
-	    var setTimeoutValue = function (value) {
-	        timeoutValue = value;
-	    };
-	    return {
-	        init: init,
-	        hasRestCache: hasRestCache,
-	        onServer: onServer,
-	        getDebug: getDebug,
-	        getDefaultHttpCache: getDefaultHttpCache,
-	        getRestCache: getRestCache,
-	        getRestServer: getRestServer,
-	        getSocketServer: getSocketServer,
-	        getTimeoutValue: getTimeoutValue,
-	        getUID: getUID,
-	        setDefaultHtpCache: setDefaultHtpCache,
-	        setRestServer: setRestServer,
-	        setTimeoutValue: setTimeoutValue
-	    };
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ServerConfigFactory;
-
-
-/***/ },
-/* 12 */
 /***/ function(module, exports) {
 
 	"use strict";
