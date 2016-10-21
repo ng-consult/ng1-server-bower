@@ -54,7 +54,7 @@
     "karma-requirejs": "^1.1.0",
     "karma-script-launcher": "^1.0.0",
     "karma-sinon-chai": "^1.2.4",
-    "karma-socket-io-server": "0.0.2",
+    "karma-socket-io-server": "^0.0.3",
     "karma-sourcemap-loader": "^0.3.7",
     "karma-tap": "^3.1.1",
     "karma-webpack": "^1.8.0",
