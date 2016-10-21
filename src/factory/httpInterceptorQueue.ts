@@ -1,6 +1,7 @@
 'use strict';
+import {IEngineQueue, IServerConfig} from './../interfaces/definitions';
 
-const HttpInterceptorQueue = ($q, $log, engineQueue, counter) => {
+const HttpInterceptorQueue = ($q, $log, engineQueue: IEngineQueue, serverConfig: IServerConfig, counter) => {
 
     $log.dev('HttpInterceptor', 'instanciated', this);
 
@@ -13,25 +14,29 @@ const HttpInterceptorQueue = ($q, $log, engineQueue, counter) => {
             $log.dev('httpRequest', config.url);
             hCounter.incr();
 
-            if (window['onServer'] && typeof window['serverConfig']['cacheServer'] !== 'undefined') {
-                if(config.url.indexOf(window['serverConfig']['cacheServer']) === -1) {
-                    config.url = window['serverConfig']['cacheServer']
-                        + '/get?url='
-                        + encodeURIComponent(config.url)
-                        + '&original-url='
-                        + encodeURIComponent(window.location.href );
-                }
+            const restURL = serverConfig.getRestServer();
 
-            } else {
-                //todo remove for test only
-                if(config.url.indexOf('http://127.0.0.1:8883/get?url=') === -1) {
-                    config.url = 'http://127.0.0.1:8883/get?url='
-                        + encodeURIComponent(config.url)
-                        + '&original-url='
-                        + encodeURIComponent(window.location.href );
+            if ( serverConfig.onServer() ) {
+                if(config.url.indexOf( restURL ) === -1) {
+                    config.headers['NgReferer'] = window.location.href;
+                    config.url = restURL
+                        + '/get?url='
+                        + encodeURIComponent(config.url);
                 }
             }
-            if( window['ngIdle'] === false) {
+            else {
+                if(restURL !== null ) {
+                    //console.log('REST URL IS NOT NULL');
+                    if(config.url.indexOf(restURL) === -1) {
+                        config.headers['NgReferer'] = window.location.href;
+                        config.url = restURL
+                            + '/get?url='
+                            + encodeURIComponent(config.url);
+                    }
+                }
+            }
+
+            if( angular.isDefined(window['onServer']) && window['onServer'] === true && window['ngIdle'] === false) {
                 if(config.cache) {
                     const cacheName = config.cache.info();
                     cacheMapping[config.url] = cacheName.id;
@@ -55,23 +60,6 @@ const HttpInterceptorQueue = ($q, $log, engineQueue, counter) => {
 
             $log.dev('httpResponse', response.config.url);
             hCounter.decr();
-            //Todo : REst caching
-
-            /*
-
-            1 - rest server returns the request
-            2 - rest server augment the response.config
-            response.config = {
-                cached: true/false,
-                urlKEY: instance:domain
-                url hashKey: url
-            }
-            3 - Store this information into engineQueue as a dependency
-            4 - onIDLE, engine queue sends the dependency list with HTML
-            5 - CC1 generates the HTML and includes the dependencies inline for fast loading
-
-             */
-            
             return $q.when(response);
         },
         responseError: (response) => {

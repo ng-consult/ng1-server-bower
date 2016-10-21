@@ -2,9 +2,10 @@
 module.exports = function () {
     return {
         basePath: './../',
-        frameworks: ['mocha', 'chai', 'mocha-debug', 'sinon-chai'],
+        frameworks: ['mocha', 'chai', 'mocha-debug', 'sinon-chai', 'socket-io-server'],
         reporters: ['mocha', 'coverage'],
         browsers: ['Chrome'],
+
         customLaunchers: {
             Chrome_travis_ci: {
                 base: 'Chrome',
@@ -46,6 +47,22 @@ module.exports = function () {
                 wacthed: false,
                 included: true
             }
-        ]
+        ],
+        socketIOServer: {
+            port: 8882,
+            allowRequest: function(handshake, cb) {
+                return cb(null, true); // authorize every connections
+            },
+
+            rules: function (socket, log) {
+                socket.on('IDLE', function( data ) {
+                    socket.emit('IDLE' + data.uid);
+                });
+
+                socket.on('LOG', function(data) {
+                    
+                })
+            }
+        }
     }
 };

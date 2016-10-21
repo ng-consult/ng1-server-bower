@@ -4,6 +4,9 @@ be.global();
 
 describe('Server side Enabled - Custom app definition', function () {
 
+    var uid = 123;
+    var restServerURL = 'http://superdomain.com';
+
     describe('A ng-model gets updated app', function () {
 
         var app = angular.module('appNgModel', ['server'])
@@ -17,7 +20,7 @@ describe('Server side Enabled - Custom app definition', function () {
             });
 
         beforeEach(function () {
-            be.server('appNgModel');
+            be.server('appNgModel', {serverConfig: {uid: uid}});
             be.injectServer();
         });
 
@@ -38,7 +41,7 @@ describe('Server side Enabled - Custom app definition', function () {
 
             modelChanged = true;
 
-            $timeout.flush(timeoutValue.get());
+            $timeout.flush(serverConfig.getTimeoutValue());
 
         });
 
@@ -54,7 +57,7 @@ describe('Server side Enabled - Custom app definition', function () {
             var ctrl = $componentController('appComponent');
 
 
-            $timeout.flush(timeoutValue.get());
+            $timeout.flush(serverConfig.getTimeoutValue());
 
             for (var i = 0; i < 1000; i++) {
                 ctrl.item = 'changed' + i;
@@ -66,7 +69,7 @@ describe('Server side Enabled - Custom app definition', function () {
 
     });
 
-    describe('Component app that loads a failed reuqest', function () {
+    describe('Component app that loads a failed request', function () {
         var app = angular.module('appJSON', ['server'])
             .component('appComponent', {
                 template: "<div ng-repeat='item in $ctrl.list'><input type='text' ng-model='item'></div>",
@@ -86,16 +89,16 @@ describe('Server side Enabled - Custom app definition', function () {
             });
 
         beforeEach(function () {
-            be.server('appJSON');
+            be.server('appJSON', {serverConfig: {uid: uid, restServerURL: restServerURL}});
             be.injectServer();
         });
 
-        after(function () {
+        afterEach(function () {
             $httpBackend.verifyNoOutstandingExpectation();
             $httpBackend.verifyNoOutstandingRequest();
         });
 
-        it('Should trigger a Idle event after the http loads ok - 1000ms', function (done) {
+        it('Should trigger a Idle event after the http failes to load - 1000ms', function (done) {
             var jsonFailed = false;
 
             window.addEventListener('Idle', function (event) {
@@ -115,7 +118,7 @@ describe('Server side Enabled - Custom app definition', function () {
             }, 1000);
 
 
-            $httpBackend.when('GET', '/big.json').respond(400, {});
+            $httpBackend.when('GET', restServerURL + '/get?url=' + encodeURIComponent('/big.json')).respond(400, {});
 
             $timeout.flush(1000);
 
@@ -141,7 +144,7 @@ describe('Server side Enabled - Custom app definition', function () {
             });
 
         beforeEach(function () {
-            be.server('appJSON2');
+            be.server('appJSON2', {serverConfig: {uid: uid, restServerURL: restServerURL}});
             be.injectServer();
         });
 
@@ -153,7 +156,7 @@ describe('Server side Enabled - Custom app definition', function () {
 
         it('Should trigger a Idle event after the http loads ok - 1000ms', function (done) {
             var jsonLoaded = false;
-            $httpBackend.when('GET', '/big.json').respond(window.bigJSON);
+            $httpBackend.when('GET', restServerURL + '/get?url=' + encodeURIComponent('/big.json')).respond(window.bigJSON);
 
             window.addEventListener('Idle', function (event) {
                 expect(jsonLoaded).to.be.ok;
@@ -168,11 +171,11 @@ describe('Server side Enabled - Custom app definition', function () {
                 expect(ctrl.list.length).to.eql(window.bigJSON.length);
             }, 1000);
 
-            $timeout.flush(timeoutValue.get());
+            $timeout.flush(serverConfig.getTimeoutValue());
 
             expect(ctrl.list.length).to.eql(0);
 
-            $timeout.flush(1000-timeoutValue.get());
+            $timeout.flush(1000 - serverConfig.getTimeoutValue());
         });
 
     });
@@ -199,7 +202,7 @@ describe('Server side Enabled - Custom app definition', function () {
             });
 
         beforeEach(function () {
-            be.server('appFilters');
+            be.server('appFilters', {serverConfig: {uid: uid}});
             be.injectServer();
         });
 
@@ -213,7 +216,7 @@ describe('Server side Enabled - Custom app definition', function () {
 
             var ctrl = $componentController('appComponent');
 
-            $timeout.flush(timeoutValue.get());
+            $timeout.flush(serverConfig.getTimeoutValue());
             ctrl.bigFilter();
 
         })

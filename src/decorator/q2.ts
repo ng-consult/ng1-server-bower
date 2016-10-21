@@ -5,7 +5,7 @@
  $$state
  then
  catch
- fially
+ finally
  }
 
  Deferred{
@@ -32,6 +32,30 @@
  $Q.resolve
  $Q.when
  */
+
+interface IPromise {
+    then( fn1: Function, fn2: Function): IPromise,
+    catch( fn1: Function): IPromise,
+    finally( fn1: Function): IPromise
+}
+
+interface IDeferred {
+    resolve(value?:any): IDeferred,
+    reject(value?:any): IDeferred,
+    notify(value?:any): void,
+    promise: IPromise
+}
+
+interface I$Q {
+    (resolver: Function): IPromise;
+    defer(): IDeferred;
+    reject(reason?: any): IDeferred;
+    resolve(value?:any): IDeferred;
+    when(value?:any): IDeferred;
+    all(...promises): IDeferred;
+    race(...promises): IDeferred;
+    prototype: any;
+}
 
 const Q = function ($delegate, counter) {
 
@@ -74,39 +98,42 @@ const Q = function ($delegate, counter) {
         }
     };
 
-    var $Q = function(resolver) {
-        //console.warn('creating new Q()');
-        if (typeof resolver !== 'function') {
-            throw new Error('norslvr - Expected resolverFn, got - resolver');
-        }
+    function get$Q(): I$Q {
+        let $Q = <I$Q>function(resolver) {
+            //console.warn('creating new Q()');
+            if (typeof resolver !== 'function') {
+                throw new Error('norslvr - Expected resolverFn, got - resolver');
+            }
 
-        var deferred = deferFn(this)();
+            var deferred = deferFn(this)();
 
-        function resolveFn(value) {
-            deferred.resolve(value);
-        }
+            function resolveFn(value) {
+                deferred.resolve(value);
+            }
 
-        function rejectFn(reason) {
-            deferred.reject(reason);
-        }
+            function rejectFn(reason) {
+                deferred.reject(reason);
+            }
 
-        resolver(resolveFn, rejectFn);
+            resolver(resolveFn, rejectFn);
 
-        return deferred.promise;
+            return deferred.promise;
 
-    };
+        };
+        $Q.prototype = proto;
 
-    $Q.prototype = proto;
+        $Q.defer = deferFn($delegate);
+        $Q.reject = $delegate.reject;
+        $Q.when = $delegate.when;
 
-    $Q.defer = deferFn($delegate);
-    $Q.reject = $delegate.reject;
-    $Q.when = $delegate.when;
+        $Q.resolve = Oresolve;
+        $Q.all = Oall;
+        $Q.race = Orace;
 
-    $Q.resolve = Oresolve;
-    $Q.all = Oall;
-    $Q.race = Orace;
+        return $Q;
+    }
 
-    return $Q;
+    return get$Q();
 };
 
 export default Q;

@@ -1,14 +1,18 @@
+import {IServerConfig} from './../interfaces/definitions';
 
-const TemplateRequest = function ($delegate, $window) {
+const TemplateRequest = function ($delegate, $sce, serverConfig: IServerConfig) {
 
     var $TemplateRequest = (tpl, ignoreRequestError) => {
         //console.log('Inside template request, querying ', tpl, ignoreRequestError);
-        if(typeof tpl === 'string') {
-            tpl = 'http://127.0.0.1:8883/get?url='
-            + encodeURIComponent(tpl)
-            + '&original-url='
-            + encodeURIComponent(window.location.href )
+
+        const restURL = serverConfig.getRestServer();
+        if(restURL !== null) {
+
+            if(typeof tpl === 'string') {
+                tpl = $sce.trustAsResourceUrl(restURL + '/get?url=' + encodeURIComponent(tpl));
+            }
         }
+
         const result =  $delegate(tpl, ignoreRequestError);
 
         return result;

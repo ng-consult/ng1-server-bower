@@ -50,66 +50,37 @@
 	var engineQueue_1 = __webpack_require__(3);
 	var q2_1 = __webpack_require__(4);
 	var Counter_1 = __webpack_require__(5);
-	var timeoutValue_1 = __webpack_require__(6);
-	var cacheFactory_1 = __webpack_require__(7);
+	var cacheFactory_1 = __webpack_require__(6);
+	var serverConfig_1 = __webpack_require__(11);
 	var Socket_1 = __webpack_require__(8);
 	var exceptionHandler_1 = __webpack_require__(9);
 	var templateRequest_1 = __webpack_require__(10);
+	var windowError_1 = __webpack_require__(12);
 	angular.module('server', [])
-	    .provider('timeoutValue', timeoutValue_1.default)
+	    .factory('serverConfig', ['$window', serverConfig_1.default])
+	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', Counter_1.default])
+	    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfig', engineQueue_1.default])
+	    .factory('socket', ['$window', 'serverConfig', Socket_1.default])
+	    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfig', 'counter', httpInterceptorQueue_1.default])
+	    .factory('windowError', ['$rootScope', '$window', 'serverConfig', windowError_1.default])
 	    .decorator('$exceptionHandler', ['$delegate', '$log', '$window', exceptionHandler_1.default])
-	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', Counter_1.default])
-	    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', engineQueue_1.default])
-	    .factory('socket', [Socket_1.default])
-	    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'counter', httpInterceptorQueue_1.default])
 	    .decorator('$q', ['$delegate', 'counter', q2_1.default])
-	    .decorator('$log', ['$delegate', 'socket', '$window', log_1.default])
+	    .decorator('$log', ['$delegate', 'socket', 'serverConfig', log_1.default])
 	    .decorator('$cacheFactory', ['$delegate', cacheFactory_1.CacheFactory])
 	    .decorator('$templateCache', ['$cacheFactory', cacheFactory_1.TemplateCache])
-	    .decorator('$templateRequest', ['$delegate', templateRequest_1.default])
-	    .provider('cacheFactoryConfig', cacheFactory_1.CacheFactoryConfig)
+	    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfig', templateRequest_1.default])
 	    .config(function ($httpProvider) {
 	    $httpProvider.interceptors.push('httpInterceptorQueue');
 	})
-	    .run(function ($rootScope, socket, $log, $exceptionHandler, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) {
-	    var originalThrow = $window.throw;
-	    var originalErrorHandler = $window.onerror;
-	    if (!originalErrorHandler) {
-	        originalErrorHandler = function mockHandler() {
-	            return (true);
-	        };
+	    .run(function ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfig, counter) {
+	    windowError.init();
+	    serverConfig.init();
+	    if (serverConfig.hasRestCache()) {
+	        $cacheFactory.importAll(serverConfig.getRestCache());
 	    }
-	    $window.onerror = function handleGlobalError(message, fileName, lineNumber, columnNumber, error) {
-	        if (!error) {
-	            error = new Error(message);
-	            error.fileName = fileName;
-	            error.lineNumber = lineNumber;
-	            error.columnNumber = (columnNumber || 0);
-	        }
-	        $rootScope.exception = true;
-	        return false;
-	    };
-	    if ($window.onServer == true) {
-	        if (typeof $window['io'] !== 'undefined') {
-	            socket.connect($window.serverConfig.socketHostname);
-	        }
-	        else {
-	            var script = document.createElement('script');
-	            $window.document.head.appendChild(script);
-	            script.onload = function () {
-	                if (typeof $window['io'] === 'undefined') {
-	                    throw new Error('It seems IO didnt load inside ngApp');
-	                }
-	                socket.connect($window.serverConfig.socketHostname);
-	            };
-	            script.src = $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
-	        }
-	    }
-	    if (typeof $window.clientTimeoutValue === 'number') {
-	        timeoutValue.set($window.clientTimeoutValue);
-	    }
-	    else {
-	        timeoutValue.set(200);
+	    if (serverConfig.onServer() == true) {
+	        $http.defaults.cache = true;
+	        socket.init();
 	    }
 	    var httpCouter = counter.create('http');
 	    var qCounter = counter.create('q');
@@ -123,17 +94,13 @@
 	            httpCouter.touch();
 	            qCounter.touch();
 	        });
-	    }, timeoutValue.get());
+	    }, serverConfig.getTimeoutValue());
 	    var digestWatcher = $rootScope.$watch(function () {
 	        counter.incr('digest');
 	        $rootScope.$$postDigest(function () {
 	            counter.decr('digest');
 	        });
 	    });
-	    $http.defaults.cache = true;
-	    if (typeof $window['ngServerCache'] !== 'undefined') {
-	        $cacheFactory.importAll($window['ngServerCache']);
-	    }
 	});
 
 
@@ -143,7 +110,7 @@
 
 	'use strict';
 	var _this = this;
-	var HttpInterceptorQueue = function ($q, $log, engineQueue, counter) {
+	var HttpInterceptorQueue = function ($q, $log, engineQueue, serverConfig, counter) {
 	    $log.dev('HttpInterceptor', 'instanciated', _this);
 	    var hCounter = counter.create('http');
 	    var cacheMapping = {};
@@ -151,24 +118,26 @@
 	        request: function (config) {
 	            $log.dev('httpRequest', config.url);
 	            hCounter.incr();
-	            if (window['onServer'] && typeof window['serverConfig']['cacheServer'] !== 'undefined') {
-	                if (config.url.indexOf(window['serverConfig']['cacheServer']) === -1) {
-	                    config.url = window['serverConfig']['cacheServer']
+	            var restURL = serverConfig.getRestServer();
+	            if (serverConfig.onServer()) {
+	                if (config.url.indexOf(restURL) === -1) {
+	                    config.headers['NgReferer'] = window.location.href;
+	                    config.url = restURL
 	                        + '/get?url='
-	                        + encodeURIComponent(config.url)
-	                        + '&original-url='
-	                        + encodeURIComponent(window.location.href);
+	                        + encodeURIComponent(config.url);
 	                }
 	            }
 	            else {
-	                if (config.url.indexOf('http://127.0.0.1:8883/get?url=') === -1) {
-	                    config.url = 'http://127.0.0.1:8883/get?url='
-	                        + encodeURIComponent(config.url)
-	                        + '&original-url='
-	                        + encodeURIComponent(window.location.href);
+	                if (restURL !== null) {
+	                    if (config.url.indexOf(restURL) === -1) {
+	                        config.headers['NgReferer'] = window.location.href;
+	                        config.url = restURL
+	                            + '/get?url='
+	                            + encodeURIComponent(config.url);
+	                    }
 	                }
 	            }
-	            if (window['ngIdle'] === false) {
+	            if (angular.isDefined(window['onServer']) && window['onServer'] === true && window['ngIdle'] === false) {
 	                if (config.cache) {
 	                    var cacheName = config.cache.info();
 	                    cacheMapping[config.url] = cacheName.id;
@@ -207,44 +176,73 @@
 /***/ function(module, exports) {
 
 	'use strict';
-	var logDecorator = function ($delegate, socket, $window) {
-	    if (typeof $window['onServer'] === 'undefined') {
-	        $delegate.dev = function () { };
-	        return $delegate;
-	    }
+	var logDecorator = function ($delegate, socket, serverConfig) {
+	    serverConfig.init();
 	    var newLog = Object.create($delegate);
 	    newLog.prototype = $delegate.prototype;
 	    ['log', 'warn', 'info', 'error', 'debug'].forEach(function (item) {
-	        newLog[item] = function () {
+	        if (serverConfig.onServer()) {
+	            newLog[item] = function () {
+	                var args = [];
+	                for (var _i = 0; _i < arguments.length; _i++) {
+	                    args[_i - 0] = arguments[_i];
+	                }
+	                var log = {
+	                    type: item,
+	                    args: args
+	                };
+	                socket.emit('LOG', log);
+	            };
+	        }
+	        else {
+	            newLog[item] = $delegate[item];
+	        }
+	    });
+	    if (serverConfig.getDebug() === true) {
+	        var timer_1 = Date.now();
+	        var devLog_1 = function () {
 	            var args = [];
 	            for (var _i = 0; _i < arguments.length; _i++) {
 	                args[_i - 0] = arguments[_i];
 	            }
-	            var log = {
-	                type: item,
-	                args: args
-	            };
-	            socket.emit('LOG', JSON.stringify(log));
+	            var time = Date.now() - timer_1;
+	            timer_1 = Date.now();
+	            var name = args.shift();
+	            args.unshift(name + '+' + time + 'ms ');
+	            return args;
 	        };
-	    });
-	    newLog['dev'] = function () {
-	        var args = [];
-	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
-	        }
-	        if ($window['serverDebug'] === true) {
-	            var log = {
-	                type: 'dev',
-	                args: args
-	            };
-	            if ($window.serverDebug === true && args[0] !== 'digest') {
-	                socket.emit('LOG', JSON.stringify(log));
+	        newLog['dev'] = function () {
+	            var args = [];
+	            for (var _i = 0; _i < arguments.length; _i++) {
+	                args[_i - 0] = arguments[_i];
 	            }
-	            else if (typeof $window.serverDebug.digest === 'boolean' && $window.serverDebug.digest === true) {
-	                socket.emit('LOG', JSON.stringify(log));
+	            if (serverConfig.onServer()) {
+	                newLog.dev = function () {
+	                    var args = [];
+	                    for (var _i = 0; _i < arguments.length; _i++) {
+	                        args[_i - 0] = arguments[_i];
+	                    }
+	                    var log = {
+	                        type: 'trace',
+	                        args: devLog_1(args)
+	                    };
+	                    socket.emit('LOG', log);
+	                };
 	            }
-	        }
-	    };
+	            else {
+	                newLog.dev = function () {
+	                    var args = [];
+	                    for (var _i = 0; _i < arguments.length; _i++) {
+	                        args[_i - 0] = arguments[_i];
+	                    }
+	                    return $delegate.debug.apply(null, devLog_1(args));
+	                };
+	            }
+	        };
+	    }
+	    else {
+	        newLog['dev'] = function () { };
+	    }
 	    return newLog;
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -256,7 +254,7 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket) {
+	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket, serverConfig) {
 	    var doneVar = {};
 	    var dependencies = {};
 	    var addDependency = function (url, cacheId) {
@@ -300,7 +298,6 @@
 	        for (var cacheId in dependencies) {
 	            _loop_1(cacheId);
 	        }
-	        console.log('cachedURLs = ', exportedCache);
 	        return exportedCache;
 	    };
 	    var done = function (from) {
@@ -316,10 +313,9 @@
 	                    html: document.documentElement.outerHTML,
 	                    doctype: new XMLSerializer().serializeToString(document.doctype),
 	                    url: window.location.href,
-	                    uid: $window['serverConfig'].uid,
 	                    exportedCache: getExportedCache()
 	                });
-	                socket.on('IDLE' + $window['serverConfig'].uid, function () {
+	                socket.on('IDLE' + serverConfig.getUID(), function () {
 	                    var Event = $window['Event'];
 	                    var dispatchEvent = $window.dispatchEvent;
 	                    var IdleEvent = new Event('Idle');
@@ -328,11 +324,13 @@
 	                });
 	            }
 	            else {
+	                if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+	                    $cacheFactory.delete('$http');
+	                }
 	                var Event_1 = $window['Event'];
 	                var dispatchEvent_1 = $window.dispatchEvent;
 	                var IdleEvent = new Event_1('Idle');
 	                dispatchEvent_1(IdleEvent);
-	                console.log('IDLE');
 	                $rootScope.$broadcast('InternIdle');
 	            }
 	        }
@@ -378,28 +376,31 @@
 	            return deferred;
 	        };
 	    };
-	    var $Q = function (resolver) {
-	        if (typeof resolver !== 'function') {
-	            throw new Error('norslvr - Expected resolverFn, got - resolver');
-	        }
-	        var deferred = deferFn(this)();
-	        function resolveFn(value) {
-	            deferred.resolve(value);
-	        }
-	        function rejectFn(reason) {
-	            deferred.reject(reason);
-	        }
-	        resolver(resolveFn, rejectFn);
-	        return deferred.promise;
-	    };
-	    $Q.prototype = proto;
-	    $Q.defer = deferFn($delegate);
-	    $Q.reject = $delegate.reject;
-	    $Q.when = $delegate.when;
-	    $Q.resolve = Oresolve;
-	    $Q.all = Oall;
-	    $Q.race = Orace;
-	    return $Q;
+	    function get$Q() {
+	        var $Q = function (resolver) {
+	            if (typeof resolver !== 'function') {
+	                throw new Error('norslvr - Expected resolverFn, got - resolver');
+	            }
+	            var deferred = deferFn(this)();
+	            function resolveFn(value) {
+	                deferred.resolve(value);
+	            }
+	            function rejectFn(reason) {
+	                deferred.reject(reason);
+	            }
+	            resolver(resolveFn, rejectFn);
+	            return deferred.promise;
+	        };
+	        $Q.prototype = proto;
+	        $Q.defer = deferFn($delegate);
+	        $Q.reject = $delegate.reject;
+	        $Q.when = $delegate.when;
+	        $Q.resolve = Oresolve;
+	        $Q.all = Oall;
+	        $Q.race = Orace;
+	        return $Q;
+	    }
+	    return get$Q();
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = Q;
@@ -410,7 +411,8 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var CounterFactory = function ($rootScope, $log, engineQueue, timeoutValue) {
+	var CounterFactory = function ($rootScope, $log, engineQueue, serverConfig) {
+	    serverConfig.init();
 	    var counters = {};
 	    var createCounter = function (name, doneCB) {
 	        if (!doneCB) {
@@ -425,7 +427,7 @@
 	        if (typeof counters[name] !== 'undefined') {
 	            return counters[name];
 	        }
-	        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, timeoutValue.get(), $log);
+	        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfig.getTimeoutValue(), $log);
 	        return counters[name];
 	    };
 	    var incr = function (name) {
@@ -546,35 +548,6 @@
 /* 6 */
 /***/ function(module, exports) {
 
-	"use strict";
-	var TimeoutValueProvider = (function () {
-	    function TimeoutValueProvider() {
-	        var _this = this;
-	        this.setTimeoutValue = function (value) {
-	            _this.timeoutValue = value;
-	        };
-	        this.$get = function () {
-	            return {
-	                set: function (value) {
-	                    _this.setTimeoutValue(value);
-	                },
-	                get: function () {
-	                    return _this.timeoutValue;
-	                }
-	            };
-	        };
-	        this.timeoutValue = 200;
-	    }
-	    return TimeoutValueProvider;
-	}());
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = TimeoutValueProvider;
-
-
-/***/ },
-/* 7 */
-/***/ function(module, exports) {
-
 	'use strict';
 	var CacheData = (function () {
 	    function CacheData(name) {
@@ -677,40 +650,39 @@
 	exports.TemplateCache = function ($cacheFactory) {
 	    return $cacheFactory('templates');
 	};
-	var CacheFactoryConfig = (function () {
-	    function CacheFactoryConfig() {
-	        var _this = this;
-	        this.$get = function () {
-	            return {
-	                setDefaultCache: function (value) {
-	                    _this.defaultCache = value;
-	                },
-	                getDefaultCache: function () {
-	                    return _this.defaultCache;
-	                }
-	            };
-	        };
-	        this.defaultCache = true;
-	    }
-	    return CacheFactoryConfig;
-	}());
-	exports.CacheFactoryConfig = CacheFactoryConfig;
 
 
 /***/ },
+/* 7 */,
 /* 8 */
 /***/ function(module, exports) {
 
 	"use strict";
-	var SocketFactory = function () {
+	var SocketFactory = function ($window, serverConfig) {
+	    serverConfig.init();
 	    var socket;
 	    var queueEmit = [];
 	    var queueOn = [];
 	    var connected = false;
-	    var connect = function (socketServer) {
-	        socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
+	    var init = function () {
+	        if (typeof $window['io'] !== 'undefined') {
+	            connect();
+	        }
+	        else {
+	            var script = $window.document.createElement('script');
+	            $window.document.head.appendChild(script);
+	            script.onload = function () {
+	                if (typeof $window['io'] === 'undefined') {
+	                    throw new Error('It seems IO didnt load inside ngApp');
+	                }
+	                connect();
+	            };
+	            script.src = serverConfig.getSocketServer() + '/socket.io/socket.io.js';
+	        }
+	    };
+	    var connect = function () {
+	        socket = window['io'].connect(serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
 	        socket.on('connect', function () {
-	            console.log('DDD: connected to ', socketServer);
 	            connected = true;
 	            var elem;
 	            while (elem = queueEmit.shift()) {
@@ -728,6 +700,7 @@
 	        });
 	    };
 	    var emit = function (key, value) {
+	        value = Object.assign({}, { uid: serverConfig.getUID() }, value);
 	        if (!connected) {
 	            queueEmit.push({ key: key, value: value });
 	        }
@@ -736,7 +709,6 @@
 	        }
 	    };
 	    var on = function (key, cb) {
-	        console.log('DDD: Received Event ', key);
 	        if (!connected) {
 	            queueOn.push({ key: key, cb: cb });
 	        }
@@ -745,7 +717,7 @@
 	        }
 	    };
 	    return {
-	        connect: connect,
+	        init: init,
 	        emit: emit,
 	        on: on
 	    };
@@ -778,13 +750,13 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var TemplateRequest = function ($delegate, $window) {
+	var TemplateRequest = function ($delegate, $sce, serverConfig) {
 	    var $TemplateRequest = function (tpl, ignoreRequestError) {
-	        if (typeof tpl === 'string') {
-	            tpl = 'http://127.0.0.1:8883/get?url='
-	                + encodeURIComponent(tpl)
-	                + '&original-url='
-	                + encodeURIComponent(window.location.href);
+	        var restURL = serverConfig.getRestServer();
+	        if (restURL !== null) {
+	            if (typeof tpl === 'string') {
+	                tpl = $sce.trustAsResourceUrl(restURL + '/get?url=' + encodeURIComponent(tpl));
+	            }
 	        }
 	        var result = $delegate(tpl, ignoreRequestError);
 	        return result;
@@ -793,6 +765,146 @@
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = TemplateRequest;
+
+
+/***/ },
+/* 11 */
+/***/ function(module, exports) {
+
+	"use strict";
+	var ServerConfigFactory = function ($window) {
+	    var initialized = false;
+	    var httpCache = true;
+	    var restServer = null;
+	    var timeoutValue = 200;
+	    var server = false;
+	    var uid = null;
+	    var socketServer = null;
+	    var restCache = null;
+	    var debug = false;
+	    var init = function () {
+	        if (initialized)
+	            return;
+	        initialized = true;
+	        if (angular.isDefined($window['onServer']) && $window['onServer'] === true) {
+	            server = true;
+	        }
+	        if (angular.isDefined($window['serverConfig'])) {
+	            if (angular.isDefined($window['serverConfig'].clientTimeoutValue)) {
+	                timeoutValue = $window['serverConfig'].clientTimeoutValue;
+	            }
+	            if (angular.isDefined($window['serverConfig'].restServerURL)) {
+	                restServer = $window['serverConfig'].restServerURL;
+	            }
+	            if (angular.isDefined($window['serverConfig'].uid)) {
+	                uid = $window['serverConfig'].uid;
+	            }
+	            if (angular.isDefined($window['serverConfig'].socketServerURL)) {
+	                socketServer = $window['serverConfig'].socketServerURL;
+	            }
+	            if (angular.isDefined($window['ngServerCache'])) {
+	                restCache = $window['ngServerCache'];
+	            }
+	            if (angular.isDefined($window['serverConfig'].debug)) {
+	                debug = $window['serverConfig'].debug;
+	            }
+	            if (angular.isDefined($window['serverConfig'].httpCache)) {
+	                httpCache = $window['serverConfig'].httpCache;
+	            }
+	        }
+	        if (server && (socketServer === null || restServer === null || uid === null)) {
+	            throw new Error('invalid serverConfig: uid, socketServer or restServer missing ');
+	        }
+	    };
+	    var hasRestCache = function () {
+	        return restCache !== null;
+	    };
+	    var onServer = function () {
+	        return server;
+	    };
+	    var getDebug = function () {
+	        return debug;
+	    };
+	    var getDefaultHttpCache = function () {
+	        return httpCache;
+	    };
+	    var getRestCache = function () {
+	        return restCache;
+	    };
+	    var getRestServer = function () {
+	        return restServer;
+	    };
+	    var getSocketServer = function () {
+	        return socketServer;
+	    };
+	    var getTimeoutValue = function () {
+	        return timeoutValue;
+	    };
+	    var getUID = function () {
+	        return uid;
+	    };
+	    var setDefaultHtpCache = function (value) {
+	        httpCache = value;
+	    };
+	    var setRestServer = function (value) {
+	        restServer = value;
+	    };
+	    var setTimeoutValue = function (value) {
+	        timeoutValue = value;
+	    };
+	    return {
+	        init: init,
+	        hasRestCache: hasRestCache,
+	        onServer: onServer,
+	        getDebug: getDebug,
+	        getDefaultHttpCache: getDefaultHttpCache,
+	        getRestCache: getRestCache,
+	        getRestServer: getRestServer,
+	        getSocketServer: getSocketServer,
+	        getTimeoutValue: getTimeoutValue,
+	        getUID: getUID,
+	        setDefaultHtpCache: setDefaultHtpCache,
+	        setRestServer: setRestServer,
+	        setTimeoutValue: setTimeoutValue
+	    };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ServerConfigFactory;
+
+
+/***/ },
+/* 12 */
+/***/ function(module, exports) {
+
+	"use strict";
+	var WindowError = function ($rootScope, $window, serverConfig) {
+	    var init = function () {
+	        if (serverConfig.onServer() === false)
+	            return;
+	        var originalThrow = $window.throw;
+	        var originalErrorHandler = $window.onerror;
+	        if (!originalErrorHandler) {
+	            originalErrorHandler = function mockHandler() {
+	                return (true);
+	            };
+	        }
+	        $window.onerror = function handleGlobalError(message, fileName, lineNumber, columnNumber, error) {
+	            if (!error) {
+	                error = new Error(message);
+	                error.fileName = fileName;
+	                error.lineNumber = lineNumber;
+	                error.columnNumber = (columnNumber || 0);
+	            }
+	            $rootScope.exception = true;
+	            return false;
+	        };
+	    };
+	    return {
+	        init: init
+	    };
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = WindowError;
 
 
 /***/ }

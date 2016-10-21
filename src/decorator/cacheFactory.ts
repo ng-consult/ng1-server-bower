@@ -138,6 +138,7 @@ export const CacheFactory = ($delegate) => {
                 storedCache.removeAll();
                 storedCache.destroy();
                 delete caches[cacheId];
+                //console.log('CACHE ', cacheId, 'destroyed');
             }
         };
         $cacheFactory.get = $delegate.get;
@@ -158,22 +159,3 @@ export const TemplateCache = ($cacheFactory) => {
 };
 
 
-
-export class CacheFactoryConfig {
-    private defaultCache;
-    constructor() {
-        this.defaultCache = true;
-    }
-
-    $get = () => {
-        return {
-            setDefaultCache: (value:boolean):void => {
-                this.defaultCache = value;
-            },
-            getDefaultCache: ():boolean => {
-                return this.defaultCache;
-            }
-        }
-
-    }
-}

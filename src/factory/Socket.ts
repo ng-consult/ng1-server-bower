@@ -1,29 +1,42 @@
 
-interface IEmitQueue {
-    key: string,
-    value: any
-}
+import {IOnQueue, IEmitQueue, IServerConfig} from './../interfaces/definitions';
 
-interface IOnQueue {
-    key: string,
-    cb: Function
-}
+const SocketFactory = ($window: Window, serverConfig: IServerConfig) => {
 
-
-const SocketFactory = () => {
+    serverConfig.init();
 
     let socket;
     const queueEmit: Array<IEmitQueue> = [];
     const queueOn: Array<IOnQueue> = [];
     let connected: boolean = false;
 
-    const connect = (socketServer: string) => {
+    const init = () => {
+        if (typeof $window['io'] !== 'undefined') {
+            connect();
+        } else {
+            const script = $window.document.createElement('script');
+            $window.document.head.appendChild(script);
+            script.onload = () => {
+                //console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+                if(typeof $window['io'] === 'undefined') {
+                    throw new Error('It seems IO didnt load inside ngApp');
+                }
+                connect();
+            };
+            //console.log('Going to load script at ', serverConfig.getSocketServer() + '/socket.io/socket.io.js');
+            script.src = serverConfig.getSocketServer() + '/socket.io/socket.io.js';
+        }
+    };
+
+    const connect = () => {
         //console.log('connecting to socket server ', socketServer);
 
-        socket = window['io'].connect(socketServer + '?token=' + window['serverConfig'].uid);
+        //console.log('GOing to connect to ', serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
+
+        socket = window['io'].connect(serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
 
         socket.on('connect', () => {
-            console.log('DDD: connected to ', socketServer);
+            //console.log('DDD: connected to ', serverConfig.getSocketServer());
             connected = true;
             let elem;
             while(elem = queueEmit.shift()) {
@@ -33,7 +46,6 @@ const SocketFactory = () => {
                 on(elem.key, elem.cb);
             }
         });
-
 
         socket.on('connect_timeout', function(err) {
             console.log('connect_timeout', err);
@@ -46,7 +58,7 @@ const SocketFactory = () => {
     };
 
     const emit = (key: string, value) => {
-        //console.log('calling emit with key', key, socket);
+        value = Object.assign({}, {uid: serverConfig.getUID()}, value);
         if( !connected) {
             queueEmit.push({key: key, value: value});
         } else {
@@ -55,7 +67,6 @@ const SocketFactory = () => {
     };
 
     const on = (key: string, cb: Function) => {
-        console.log('DDD: Received Event ', key);
         if( !connected) {
             queueOn.push({key: key, cb: cb});
         } else {
@@ -64,7 +75,7 @@ const SocketFactory = () => {
     };
 
     return {
-        connect: connect,
+        init: init,
         emit: emit,
         on: on
     };

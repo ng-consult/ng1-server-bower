@@ -1,91 +1,49 @@
 /// <reference path="../typings/globals/angular/index.d.ts" />
-
+import {IServerConfig, ICounterFactory} from './interfaces/definitions';
 import HttpInterceptorQueue from './factory/httpInterceptorQueue';
 import Log from './decorator/log';
 import EngineQueue from './factory/engineQueue';
 import Q from './decorator/q2';
 import CounterFactory from './factory/Counter';
-import TimeoutValueProvider from './provider/timeoutValue';
-import {CacheFactory, TemplateCache, CacheFactoryConfig} from './decorator/cacheFactory';
+import {CacheFactory, TemplateCache} from './decorator/cacheFactory';
+import ServerConfigFactory from './factory/serverConfig';
 import SocketFactory from './factory/Socket';
 import ExceptionHandler from './decorator/exceptionHandler';
 import TemplateRequest from './decorator/templateRequest';
+import WindowError from './factory/windowError';
 
 angular.module('server', [])
-    .provider('timeoutValue', TimeoutValueProvider)
+
+    .factory('serverConfig', ['$window', ServerConfigFactory])
+    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', CounterFactory])
+    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfig', EngineQueue])
+    .factory('socket', ['$window', 'serverConfig', SocketFactory])
+    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfig', 'counter', HttpInterceptorQueue])
+    .factory('windowError', ['$rootScope', '$window', 'serverConfig', WindowError])
 
     .decorator('$exceptionHandler', ['$delegate', '$log', '$window', ExceptionHandler])
-
-    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'timeoutValue', CounterFactory])
-    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory','socket', EngineQueue])
-    .factory('socket', [SocketFactory])
-    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'counter', HttpInterceptorQueue])
-
     .decorator('$q', ['$delegate', 'counter', Q])
-    .decorator('$log', ['$delegate', 'socket', '$window', Log])
+    .decorator('$log', ['$delegate', 'socket', 'serverConfig', Log])
     .decorator('$cacheFactory', ['$delegate', CacheFactory])
     .decorator('$templateCache', ['$cacheFactory', TemplateCache])
-    .decorator('$templateRequest', ['$delegate', TemplateRequest])
+    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfig', TemplateRequest])
 
-    .provider('cacheFactoryConfig', CacheFactoryConfig)
     .config( ($httpProvider) => {
         $httpProvider.interceptors.push('httpInterceptorQueue');
     })
-    .run( ($rootScope, socket, $log, $exceptionHandler, $window, $timeout, $http, $cacheFactory, cacheFactoryConfig, timeoutValue, counter) => {
 
-        const originalThrow = $window.throw;
+    .run( ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfig: IServerConfig, counter: ICounterFactory) => {
 
-        let originalErrorHandler = $window.onerror;
-        if ( ! originalErrorHandler ) {
-            originalErrorHandler = function mockHandler() {
-                return( true );
-            };
+        windowError.init();
+        serverConfig.init();
+
+        if(serverConfig.hasRestCache()) {
+            $cacheFactory.importAll(serverConfig.getRestCache());
         }
 
-        
-
-        $window.onerror = function handleGlobalError( message, fileName, lineNumber, columnNumber, error ) {
-            // If this browser does not pass-in the original error object, let's
-            // create a new error object based on what we know.
-            if ( ! error ) {
-                error = new Error( message );
-                // NOTE: These values are not standard, according to MDN.
-                error.fileName = fileName;
-                error.lineNumber = lineNumber;
-                error.columnNumber = ( columnNumber || 0 );
-            }
-            $rootScope.exception = true;
-            // Pass the error off to our core error handler.
-            //$exceptionHandler( error );
-            // Pass of the error to the original error handler.
-
-            return false;
-            //return originalErrorHandler.apply( $window, arguments ) ;
-
-        };
-        
-        if ($window.onServer == true) {
-            if (typeof $window['io'] !== 'undefined') {
-                socket.connect($window.serverConfig.socketHostname);
-            } else {
-                const script = document.createElement('script');
-                $window.document.head.appendChild(script);
-                script.onload = () => {
-                    //console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
-                    if(typeof $window['io'] === 'undefined') {
-                        throw new Error('It seems IO didnt load inside ngApp');
-                    }
-                    socket.connect($window.serverConfig.socketHostname);
-                };
-                script.src = $window.serverConfig.socketHostname + '/socket.io/socket.io.js';
-            }
-        }
-
-        // IDLE EVENT SETION
-        if (typeof $window.clientTimeoutValue === 'number') {
-            timeoutValue.set($window.clientTimeoutValue);
-        } else {
-            timeoutValue.set(200);
+        if (serverConfig.onServer() == true) {
+            $http.defaults.cache = true;
+            socket.init();
         }
 
         const httpCouter = counter.create('http');
@@ -95,7 +53,6 @@ angular.module('server', [])
             digestWatcher();
         });
 
-
         $timeout(function () {
             $rootScope.$apply(() => {
                 $log.dev('index.ts', 'touching http and q');
@@ -103,8 +60,7 @@ angular.module('server', [])
                 qCounter.touch();
             });
 
-        }, timeoutValue.get());
-
+        }, serverConfig.getTimeoutValue());
 
         var digestWatcher = $rootScope.$watch(() => {
             counter.incr('digest');
@@ -113,15 +69,7 @@ angular.module('server', [])
             });
         });
 
-        // REST CACHE SECTION
-        $http.defaults.cache = true;
-        //todo turn it off depending on config
-
         //throw new Error('test');
-
-        if(typeof $window['ngServerCache'] !== 'undefined') {
-            $cacheFactory.importAll($window['ngServerCache']);
-        }
 
 
     });

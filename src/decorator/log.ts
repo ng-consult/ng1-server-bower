@@ -1,42 +1,61 @@
 'use strict';
 
-const logDecorator = ($delegate, socket, $window) =>{
+import {IServerConfig, ISocket} from './../interfaces/definitions';
 
-    if( typeof $window['onServer'] === 'undefined' ) {
-        $delegate.dev = () => {};
-        return $delegate;
-    }
+const logDecorator = ($delegate, socket: ISocket, serverConfig: IServerConfig) =>{
+
+    serverConfig.init();
 
     var newLog = Object.create($delegate);
     newLog.prototype = $delegate.prototype;
 
     ['log', 'warn', 'info', 'error', 'debug'].forEach((item) =>{
 
-        newLog[item] = function(...args) {
-            const log = {
-                type: item,
-                args: args
-            };
-            socket.emit('LOG' , JSON.stringify(log));
+        if(serverConfig.onServer()) {
+            newLog[item] = function(...args) {
+                const log = {
+                    type: item,
+                    args: args
+                };
+                socket.emit('LOG' , log);
+            }
+        } else {
+            newLog[item] = $delegate[item];
         }
 
     });
 
-    newLog['dev'] = function(...args: string[]) {
+    if(serverConfig.getDebug() === true) {
+        let timer = Date.now();
 
-        if($window['serverDebug'] === true) {
-            const log = {
-                type: 'dev',
-                args: args
-            };
-            if( $window.serverDebug === true && args[0] !== 'digest') {
-                socket.emit('LOG', JSON.stringify(log));
+        const devLog = (...args) => {
+            let time = Date.now() - timer;
+            timer = Date.now();
+            let name = args.shift();
+            args.unshift(name + '+' + time + 'ms ');
+            return args;
+        };
+
+        newLog['dev'] = function (...args:string[]) {
+            if (serverConfig.onServer()) {
+                newLog.dev = function (...args) {
+                    const log = {
+                        type: 'trace',
+                        args: devLog(args)
+                    };
+                    //console.log('emitting LOG with ', JSON.stringify(log));
+                    socket.emit('LOG', log);
+                }
+            } else {
+                newLog.dev = function(...args: string[]) {
+                    return $delegate.debug.apply(null, devLog(args));
+                }
             }
-            else if (typeof $window.serverDebug.digest === 'boolean' && $window.serverDebug.digest === true) {
-                socket.emit('LOG', JSON.stringify(log));
-            }
+
         }
-    };
+    } else {
+        newLog['dev'] = () => {}
+    }
     return newLog;
 };
 

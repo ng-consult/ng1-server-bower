@@ -2,40 +2,19 @@
 var before = function (global) {
     return {
         global: function(override) {
-            global.files = {};
             global.onServer = true;
             global.serverDebug = global.onTRAVIS ? false: true;
-            global.fs = {
-                appendFile: function (path, msg, cb) {
-                    global.files[path] = msg;
-                }
-            };
-            global.logConfig = {
-                dir: '/var/log/angular',
-                warn: {
-                    enabled: true,
-                    stack: false
-                },
-                log: {
-                    enabled: true,
-                    stack: false
-                },
-                debug: {
-                    enabled: false,
-                    stack: false
-                },
-                error: {
-                    enabled: true,
-                    stack: false
-                },
-                info: {
-                    enabled: false,
-                    stack: false
-                }
+            global.serverConfig = {
+                socketServerURL: 'http://localhost:8882',
+                restServerURL: 'http://domain.com'
             };
             if(override) {
                 for(var key in override) {
-                    global[key] = override[key];
+                    if(typeof global[key] === 'undefined') {
+                        global[key] = override[key];
+                    } else {
+                        global[key] = Object.assign({}, global[key], override[key]);
+                    }
                 }
             }
         },
@@ -45,13 +24,15 @@ var before = function (global) {
         },
         noServer: function (appName, override) {
             delete global.onServer;
-            delete global.fs;
-            delete global.logConfig;
-            delete global.$cacheFactory;
-
+            delete global.serverConfig;
+            delete global.ngServerCache;
             if(override) {
                 for(var key in override) {
-                    global[key] = override[key];
+                    if(typeof global[key] === 'undefined') {
+                        global[key] = override[key];
+                    } else {
+                        global[key] = Object.assign({}, global[key], override[key]);
+                    }
                 }
             }
             global.angular.mock.module(appName);
@@ -70,8 +51,7 @@ var before = function (global) {
                 .split(',').filter(Boolean); // split & filter [""]
         },
         injectServer: function () {
-
-            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$cacheFactory_, _cacheFactoryConfig_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_, _timeoutValue_) {
+            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$cacheFactory_, _socket_, _serverConfig_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');
@@ -79,12 +59,11 @@ var before = function (global) {
                 }
                 return global;
             };
-
             myargs = this.annotateInject(fn);
             return global.angular.mock.inject.apply(global, [fn]);
         },
         injectNoServer: function () {
-            var fn = function(_$componentController_, _$log_,  _$timeout_, _timeoutValue_) {
+            var fn = function(_$componentController_, _$httpBackend_, _$compile_, _$rootScope_, _$log_,  _$timeout_, _serverConfig_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');
@@ -97,5 +76,3 @@ var before = function (global) {
         }
     }
 };
-
-console.log(window.before(window).server);
