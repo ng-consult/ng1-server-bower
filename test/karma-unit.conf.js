@@ -45,14 +45,12 @@ module.exports = function (config) {
                 // and use stats to turn off verbose output
                 stats: {
                     // options i.e.
-                    chunks: true
+                    chunks: false
                 }
             }
         };
 
         conf = Object.assign(conf, localConf);
-
-        console.log(conf);
 
     }
 

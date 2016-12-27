@@ -1,23 +1,19 @@
-
-
-
 describe("cache Factory Decorator - window.onServer = true", function () {
 
     var be = before(window);
 
+    var uid = 123;
+
     beforeEach(function() {
-        be.server('server');
+        be.server('server', {serverConfig: {uid: uid}});
         be.injectServer();
     });
 
 
     it('$window.$cacheFactoryProvider should  be set', function() {
-        expect(window.$cacheFactoryProvider).to.be.defined;
+        expect(serverConfig.hasRestCache()).eql(false);
     });
 
-    it('$window.$angularServerCache should be set', function() {
-        expect(window.$angularServerCache).to.be.undefined;
-    });
 
     describe('The original cache works ok', function() {
 
@@ -70,7 +66,7 @@ describe("cache Factory Decorator - window.onServer = true", function () {
 
 
     });
-    
+
     describe('Augmented cache', function() {
 
 
@@ -80,8 +76,6 @@ describe("cache Factory Decorator - window.onServer = true", function () {
             var value = { key: 'test' };
 
             var newCache = $cacheFactory(cacheName);
-            console.log(newCache);
-
             expect(newCache).to.eql($cacheFactory.get(cacheName));
 
             expect(typeof newCache.put).to.eql('function');
@@ -90,7 +84,6 @@ describe("cache Factory Decorator - window.onServer = true", function () {
 
             var data = $cacheFactory.export(cacheName);
 
-            console.log('data = ', data);
             expect(data[key]).to.eql(value);
 
         });
@@ -161,8 +154,6 @@ describe("cache Factory Decorator - window.onServer = true", function () {
 
         });
 
-
-
         it('$cacheFactory.importAll() with cache inexistant', function() {
 
             var dataToImport = {
@@ -181,7 +172,6 @@ describe("cache Factory Decorator - window.onServer = true", function () {
             expect($cacheFactory.exportAll()).to.eql(dataToImport);
 
         });
-
 
         it('$cacheFactory.importAll() with cache already defined', function() {
 
@@ -208,15 +198,6 @@ describe("cache Factory Decorator - window.onServer = true", function () {
 
         });
 
-
-
-
-
-
     });
-
-
-
-
 
 });

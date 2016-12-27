@@ -1,0 +1,8 @@
+{
+  "resolution": "main",
+  "tree": {
+    "src": "https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/b488f3cb5f70ea62c66a3ecaef4e38baadf3727c/angular/legacy/angular-1.4.d.ts",
+    "raw": "registry:dt/angular/legacy/angular#1.4.0+20160727175746",
+    "typings": "https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/b488f3cb5f70ea62c66a3ecaef4e38baadf3727c/angular/legacy/angular-1.4.d.ts"
+  }
+}

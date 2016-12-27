@@ -1,9 +1,35 @@
-import {IEngineQueue, ICounterFactory} from './../interfaces/definitions';
+import {IEngineQueue, ICounterFactory, IServerConfig} from './../interfaces/definitions';
 
 
-const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, timeoutValue):ICounterFactory => {
+const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, serverConfig: IServerConfig):ICounterFactory => {
+    serverConfig.init();
     const counters = {};
 
+    /*
+    const start = () => {
+        const httpCouter = createCounter('http');
+        const qCounter = createCounter('q');
+        const digestCounter = createCounter('digest', ()=> {
+            $log.dev('run', 'digestWatcher cleanup', digestWatcher);
+            digestWatcher();
+        });
+
+        $timeout(function () {
+            $rootScope.$apply(() => {
+                $log.dev('index.ts', 'touching http and q');
+                httpCouter.touch();
+                qCounter.touch();
+            });
+
+        }, serverConfig.getTimeoutValue());
+
+        var digestWatcher = $rootScope.$watch(() => {
+            incr('digest');
+            $rootScope.$$postDigest(function () {
+                decr('digest');
+            });
+        });
+    }*/
     /**
      *
      * @param name
@@ -23,7 +49,7 @@ const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, timeoutValue
         if(typeof counters[name] !== 'undefined') {
             return counters[name];
         }
-        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, timeoutValue.get(), $log);
+        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfig.getTimeoutValue(), $log);
         return counters[name];
     };
 
@@ -125,7 +151,7 @@ class Counter {
         }
     };
 
-    triggerIdle = ():void => {
+    triggerIdle():void {
         this.clearTimeout();
         this.$log.dev(this.name, 'triggerIdle called', this.count, this.TimeoutValue);
         this.timeout = setTimeout( () => {
@@ -142,6 +168,7 @@ class Counter {
                 this.engineQueue.setStatus(this.name, false);
             }
         }, this.TimeoutValue);
+        
         this.$log.dev(this.name, 'timeout set to', this.timeout);
     };
 }

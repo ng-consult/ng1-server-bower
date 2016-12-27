@@ -17,7 +17,7 @@
     "src",
     "*.js"
   ],
-  "version": "1.2.1",
+  "version": "2.0.0-beta1",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -54,7 +54,9 @@
     "karma-requirejs": "^1.1.0",
     "karma-script-launcher": "^1.0.0",
     "karma-sinon-chai": "^1.2.4",
+    "karma-socket-io-server": "^0.0.3",
     "karma-sourcemap-loader": "^0.3.7",
+    "karma-tap": "^3.1.1",
     "karma-webpack": "^1.8.0",
     "mocha": "^3.0.2",
     "pre-commit": "^1.1.3",
