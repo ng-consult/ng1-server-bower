@@ -9,7 +9,7 @@ const ExceptionHandler = ($delegate, $log, $window) => {
 
     return function(exception, cause) {
         dispatchEvent(IdleEvent);
-        $log.debug('Default exception handler.');
+        //$log.debug('Default exception handler.');
         $delegate(exception, cause);
     };
 };

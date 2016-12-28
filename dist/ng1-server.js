@@ -319,9 +319,17 @@
 	            isDone = true;
 	            $window['ngIdle'] = true;
 	            if (serverConfig.onServer() === true) {
+	                var doctype = void 0;
+	                try {
+	                    doctype = new XMLSerializer().serializeToString(document.doctype);
+	                }
+	                catch (e) {
+	                    $log.warn('There is no doctype associated to this document');
+	                    doctype = '';
+	                }
 	                socket.emit('IDLE', {
 	                    html: document.documentElement.outerHTML,
-	                    doctype: new XMLSerializer().serializeToString(document.doctype),
+	                    doctype: doctype,
 	                    url: window.location.href,
 	                    exportedCache: getExportedCache()
 	                });
@@ -329,20 +337,17 @@
 	                    var Event = $window['Event'];
 	                    var dispatchEvent = $window.dispatchEvent;
 	                    var IdleEvent = new Event('Idle');
-	                    console.log('Idle dispatched - server side');
 	                    dispatchEvent(IdleEvent);
 	                    $rootScope.$broadcast('InternIdle');
 	                });
 	            }
 	            else {
-	                console.log('Going to trigger Idle');
 	                if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
 	                    $cacheFactory.delete('$http');
 	                }
 	                var Event_1 = $window['Event'];
 	                var dispatchEvent_1 = $window.dispatchEvent;
 	                var IdleEvent = new Event_1('Idle');
-	                console.log('Idle dispatched');
 	                dispatchEvent_1(IdleEvent);
 	                $rootScope.$broadcast('InternIdle');
 	            }
@@ -865,7 +870,6 @@
 	    var IdleEvent = new Event('ExceptionHandler');
 	    return function (exception, cause) {
 	        dispatchEvent(IdleEvent);
-	        $log.debug('Default exception handler.');
 	        $delegate(exception, cause);
 	    };
 	};

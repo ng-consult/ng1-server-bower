@@ -42,7 +42,7 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
 
     const getExportedCache = () => {
         const exportedCache = {};
-        
+
         for(let cacheId in dependencies) {
             exportedCache[cacheId] = {};
             const cachedUrls = $cacheFactory.export(cacheId);
@@ -84,9 +84,18 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
                 //console.log('GOing to throw an error');
                 //throw new Error('testerror');
 
+                let doctype;
+
+                try {
+                    doctype = new XMLSerializer().serializeToString(document.doctype)
+                } catch(e) {
+                    // There is no doctype definition.
+                    $log.warn('There is no doctype associated to this document');
+                    doctype = '';
+                }
                 socket.emit('IDLE', {
                     html: document.documentElement.outerHTML,
-                    doctype: new XMLSerializer().serializeToString(document.doctype),
+                    doctype: doctype,
                     url: window.location.href,
                     exportedCache: getExportedCache()
                 });
@@ -95,13 +104,11 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
                     const Event = $window['Event'];
                     const dispatchEvent = $window.dispatchEvent;
                     const IdleEvent = new Event('Idle');
-                    console.log('Idle dispatched - server side');
                     dispatchEvent(IdleEvent);
                     $rootScope.$broadcast('InternIdle');
 
                 });
             } else {
-                console.log('Going to trigger Idle');
                 if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
                     //console.log('deleting $http', serverConfig.getDefaultHttpCache());
                     $cacheFactory.delete('$http');
@@ -109,7 +116,6 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
                 const Event = $window['Event'];
                 const dispatchEvent = $window.dispatchEvent;
                 const IdleEvent = new Event('Idle');
-                console.log('Idle dispatched');
                 dispatchEvent(IdleEvent);
                 $rootScope.$broadcast('InternIdle');
 
