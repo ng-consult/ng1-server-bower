@@ -1,12 +1,15 @@
-#angular.js-server    [![Build Status](https://travis-ci.org/a-lucas/angular.js-server-bower.svg?branch=master)](https://travis-ci.org/a-lucas/angular.js-server-bower)   [![codecov](https://codecov.io/gh/a-lucas/angular.js-server-bower/branch/master/graph/badge.svg)](https://codecov.io/gh/a-lucas/angular.js-server-bower)
+#ng1-server-bower    
 
-This is the client module to include to make [Angular.js-server]( https://github.com/a-lucas/angular.js-server/ "Angular.js on server") work.
+[![Build Status](https://travis-ci.org/ng-consult/ng1-server-bower.svg?branch=master)](https://travis-ci.org/ng-consult/ng1-server-bower)   
+[![codecov](https://codecov.io/gh/ng-consult/ng1-server-bower/branch/master/graph/badge.svg)](https://codecov.io/gh/ng-consult/ng1-server-bower)
+
+This is the client module to include to make the npm [ng1-server]( https://github.com/ng-consult/ng1-server/) work.
 
 #installation
 
 As simple as that: 
 ```
-bower install angular.js-server
+bower install ng1-server
 ```
 
 If you still don't use [bower](), you can get the file [here]()

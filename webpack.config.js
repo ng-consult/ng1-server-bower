@@ -3,7 +3,7 @@ var path = require('path');
 module.exports = {
     entry: './src/index.ts',
     output: {
-        filename: 'dist/angular.js-server.js'
+        filename: 'dist/ng1-server.js'
     },
     devtool: 'source-map',
     resolve: {

@@ -1,7 +1,7 @@
 {
-  "name": "angular.js-server",
-  "description": "Angular module to include for server side renderering with your application ( https://github.com/a-lucas/angular.js-server/ )",
-  "main": "dist/angular.js-server.js",
+  "name": "ng1-server",
+  "description": "Angular module to include for server side renderering with your application ( https://github.com/ng-consult/ng1-server/ )",
+  "main": "dist/ng1-server.js",
   "authors": [
     "Antoine LUCAS <antoine.lucas.australia@gmail.com>"
   ],
@@ -15,7 +15,7 @@
     "Custom promise",
     "IDLE state"
   ],
-  "homepage": "https://github.com/a-lucas/angular.js-server-bower",
+  "homepage": "https://github.com/ng-consult/ng1-server-bower",
   "ignore": [
     "node_modules",
     "bower_components",

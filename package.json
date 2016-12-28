@@ -1,5 +1,5 @@
 {
-  "name": "angular.js-server-bower",
+  "name": "ng1-server-bower",
   "author": "Antoine LUCAS <antoine.lucas.australia@gmail.com>",
   "scripts": {
     "bower": "./node_modules/.bin/bower install",
@@ -12,16 +12,16 @@
     "build",
     "test"
   ],
-  "main": "dist/angular.js-server.js",
+  "main": "dist/ng1-server.js",
   "ignore": [
     "src",
     "*.js"
   ],
-  "version": "2.0.0-beta1",
-  "license": "MIT",
+  "version": "2.0.0-beta2",
+  "license": "GLGPL v3",
   "repository": {
     "type": "git",
-    "url": "https://github.com/a-lucas/angular.js-server-bower.git"
+    "url": "https://github.com/ng-consult/ng1-server-bower.git"
   },
   "engines": {
     "node": ">=5.12.0",

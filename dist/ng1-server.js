@@ -932,4 +932,4 @@
 
 /***/ }
 /******/ ]);
-//# sourceMappingURL=angular.js-server.js.map
+//# sourceMappingURL=ng1-server.js.map
