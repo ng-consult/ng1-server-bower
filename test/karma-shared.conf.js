@@ -14,7 +14,7 @@ module.exports = function () {
         },
         preprocessors: {
             '**/*.json': ['json'],
-            'dist/angular.js-server.js': ['coverage']
+            'dist/ng1-server.js': ['coverage']
         },
         coverageReporter: {
             instrumenter: {
@@ -35,9 +35,9 @@ module.exports = function () {
             //mocha stuff
             'test/mocha.conf.js',
 
-            'dist/angular.js-server.js',
+            'dist/ng1-server.js',
             {
-                pattern:'dist/angular.js-server.js.map',
+                pattern:'dist/ng1.0.0-server.js.map',
                 included: false
             },
             //test files
@@ -60,7 +60,7 @@ module.exports = function () {
                 });
 
                 socket.on('LOG', function(data) {
-                    
+
                 })
             }
         }
