@@ -45,8 +45,8 @@ const ServerConfigFactory = ($window: Window)  => {
                 //console.log('LOADING HTTPCACHE ', $window['serverConfig']);
                 httpCache = $window['serverConfig'].httpCache;
             }
-            if(angular.isDefined( $window['serverConfig'].restCacheEnabled)) {
-                restCacheEnabled = $window['serverConfig'].restCacheEnabled;
+            if(angular.isDefined( $window['serverConfig'].restCache)) {
+                restCacheEnabled = $window['serverConfig'].restCache;
             }
         }
 

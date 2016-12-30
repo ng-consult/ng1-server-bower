@@ -1,7 +1,7 @@
 'use strict';
 import {IEngineQueue, IServerConfig} from './../interfaces/definitions';
 
-const HttpInterceptorQueue = ($q, $log, engineQueue: IEngineQueue, serverConfig: IServerConfig, counter) => {
+const HttpInterceptorQueue = ($q, $log, engineQueue: IEngineQueue, serverConfigHelper: IServerConfig, counter) => {
 
     $log.dev('HttpInterceptor', 'instanciated', this);
 
@@ -13,18 +13,18 @@ const HttpInterceptorQueue = ($q, $log, engineQueue: IEngineQueue, serverConfig:
         request:  (config) => {
             $log.dev('before decorator -> httpRequest', config.url);
             hCounter.incr();
-            const restURL = serverConfig.getRestServer();
+            const restURL = serverConfigHelper.getRestServer();
 
             if(restURL !== null && config.url.indexOf(restURL) === -1) {
                 //config.headers['NgReferer'] = window.location.href;
-                if(serverConfig.onServer() || serverConfig.getRestCacheEnabled()) {
+                if(serverConfigHelper.onServer() || serverConfigHelper.getRestCacheEnabled()) {
                     config.url = restURL
                         + '/get?url='
                         + encodeURIComponent(config.url);
                 }
             }
 
-            if( serverConfig.onServer() && window['ngIdle'] === false) {
+            if( serverConfigHelper.onServer() && window['ngIdle'] === false) {
                 if(config.cache) {
                     const cacheName = config.cache.info();
                     cacheMapping[config.url] = cacheName.id; //this should be $http anyway - or templates

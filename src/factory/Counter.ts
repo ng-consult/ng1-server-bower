@@ -1,8 +1,8 @@
 import {IEngineQueue, ICounterFactory, IServerConfig} from './../interfaces/definitions';
 
 
-const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, serverConfig: IServerConfig):ICounterFactory => {
-    serverConfig.init();
+const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, serverConfigHelper: IServerConfig):ICounterFactory => {
+    serverConfigHelper.init();
     const counters = {};
 
     /*
@@ -21,7 +21,7 @@ const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, serverConfig
                 qCounter.touch();
             });
 
-        }, serverConfig.getTimeoutValue());
+        }, serverConfigHelper.getTimeoutValue());
 
         var digestWatcher = $rootScope.$watch(() => {
             incr('digest');
@@ -49,7 +49,7 @@ const CounterFactory = ($rootScope, $log, engineQueue:IEngineQueue, serverConfig
         if(typeof counters[name] !== 'undefined') {
             return counters[name];
         }
-        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfig.getTimeoutValue(), $log);
+        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfigHelper.getTimeoutValue(), $log);
         return counters[name];
     };
 
@@ -168,7 +168,7 @@ class Counter {
                 this.engineQueue.setStatus(this.name, false);
             }
         }, this.TimeoutValue);
-        
+
         this.$log.dev(this.name, 'timeout set to', this.timeout);
     };
 }

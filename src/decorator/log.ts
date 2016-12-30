@@ -2,16 +2,16 @@
 
 import {IServerConfig, ISocket} from './../interfaces/definitions';
 
-const logDecorator = ($delegate, socket: ISocket, serverConfig: IServerConfig) =>{
+const logDecorator = ($delegate, socket: ISocket, serverConfigHelper: IServerConfig) =>{
 
-    serverConfig.init();
+    serverConfigHelper.init();
 
     var newLog = Object.create($delegate);
     newLog.prototype = $delegate.prototype;
 
     ['log', 'warn', 'info', 'error', 'debug'].forEach((item) =>{
 
-        if(serverConfig.onServer()) {
+        if(serverConfigHelper.onServer()) {
             newLog[item] = function(...args) {
                 const log = {
                     type: item,
@@ -25,7 +25,7 @@ const logDecorator = ($delegate, socket: ISocket, serverConfig: IServerConfig) =
 
     });
 
-    if(serverConfig.getDebug() === true) {
+    if(serverConfigHelper.getDebug() === true) {
         let timer = Date.now();
 
         const devLog = (...args) => {
@@ -37,7 +37,7 @@ const logDecorator = ($delegate, socket: ISocket, serverConfig: IServerConfig) =
         };
 
         newLog['dev'] = function (...args:string[]) {
-            if (serverConfig.onServer()) {
+            if (serverConfigHelper.onServer()) {
                 newLog.dev = function (...args) {
                     const log = {
                         type: 'trace',

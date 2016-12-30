@@ -14,35 +14,35 @@ import WindowError from './factory/windowError';
 
 angular.module('server', [])
 
-    .factory('serverConfig', [ '$window', ServerConfigFactory])
-    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', CounterFactory])
-    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfig', EngineQueue])
-    .factory('socket', ['$window', 'serverConfig', SocketFactory])
-    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfig', 'counter', HttpInterceptorQueue])
-    .factory('windowError', ['$rootScope', '$window', 'serverConfig', WindowError])
+    .factory('serverConfigHelper', [ '$window', ServerConfigFactory])
+    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfigHelper', CounterFactory])
+    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfigHelper', EngineQueue])
+    .factory('socket', ['$window', 'serverConfigHelper', SocketFactory])
+    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfigHelper', 'counter', HttpInterceptorQueue])
+    .factory('windowError', ['$rootScope', '$window', 'serverConfigHelper', WindowError])
 
     .decorator('$exceptionHandler', ['$delegate', '$log', '$window', ExceptionHandler])
     .decorator('$q', ['$delegate', 'counter', Q])
-    .decorator('$log', ['$delegate', 'socket', 'serverConfig', Log])
+    .decorator('$log', ['$delegate', 'socket', 'serverConfigHelper', Log])
     .decorator('$cacheFactory', ['$delegate', CacheFactory])
     .decorator('$templateCache', ['$cacheFactory', TemplateCache])
-    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfig', TemplateRequest])
+    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfigHelper', TemplateRequest])
 
     .config( ($httpProvider) => {
         $httpProvider.interceptors.push('httpInterceptorQueue');
     })
 
-    .run( ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfig: IServerConfig, counter: ICounterFactory) => {
+    .run( ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfigHelper: IServerConfig, counter: ICounterFactory) => {
 
         windowError.init();
-        serverConfig.init();
+        serverConfigHelper.init();
 
-        if(serverConfig.hasRestCache()) {
-            $cacheFactory.importAll(serverConfig.getRestCache());
+        if(serverConfigHelper.hasRestCache()) {
+            $cacheFactory.importAll(serverConfigHelper.getRestCache());
             $http.defaults.cache = true;
         }
 
-        if (serverConfig.onServer() == true) {
+        if (serverConfigHelper.onServer() == true) {
             $http.defaults.cache = true;
             socket.init();
         }
@@ -61,7 +61,7 @@ angular.module('server', [])
                 qCounter.touch();
             });
 
-        }, serverConfig.getTimeoutValue());
+        }, serverConfigHelper.getTimeoutValue());
 
         var digestWatcher = $rootScope.$watch(() => {
             counter.incr('digest');
@@ -71,7 +71,7 @@ angular.module('server', [])
         });
 
 
-        if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+        if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
             $rootScope.$on('InternIdle', function() {
                 $http.defaults.cache = false;
             });

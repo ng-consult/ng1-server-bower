@@ -1,9 +1,9 @@
 
 import {IOnQueue, IEmitQueue, IServerConfig} from './../interfaces/definitions';
 
-const SocketFactory = ($window: Window, serverConfig: IServerConfig) => {
+const SocketFactory = ($window: Window, serverConfigHelper: IServerConfig) => {
 
-    serverConfig.init();
+    serverConfigHelper.init();
 
     let socket;
     const queueEmit: Array<IEmitQueue> = [];
@@ -17,26 +17,26 @@ const SocketFactory = ($window: Window, serverConfig: IServerConfig) => {
             const script = $window.document.createElement('script');
             $window.document.head.appendChild(script);
             script.onload = () => {
-                //console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfig.socketHostname + '/socket.io/socket.io.js'));
+                //console.log('IO SCRIPT LOADED', JSON.stringify($window.serverConfigHelper.socketHostname + '/socket.io/socket.io.js'));
                 if(typeof $window['io'] === 'undefined') {
                     throw new Error('It seems IO didnt load inside ngApp');
                 }
                 connect();
             };
-            //console.log('Going to load script at ', serverConfig.getSocketServer() + '/socket.io/socket.io.js');
-            script.src = serverConfig.getSocketServer() + '/socket.io/socket.io.js';
+            //console.log('Going to load script at ', serverConfigHelper.getSocketServer() + '/socket.io/socket.io.js');
+            script.src = serverConfigHelper.getSocketServer() + '/socket.io/socket.io.js';
         }
     };
 
     const connect = () => {
         //console.log('connecting to socket server ', socketServer);
 
-        //console.log('GOing to connect to ', serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
+        //console.log('GOing to connect to ', serverConfigHelper.getSocketServer() + '?token=' + serverConfigHelper.getUID());
 
-        socket = window['io'].connect(serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
+        socket = window['io'].connect(serverConfigHelper.getSocketServer() + '?token=' + serverConfigHelper.getUID());
 
         socket.on('connect', () => {
-            //console.log('DDD: connected to ', serverConfig.getSocketServer());
+            //console.log('DDD: connected to ', serverConfigHelper.getSocketServer());
             connected = true;
             let elem;
             while(elem = queueEmit.shift()) {
@@ -58,7 +58,7 @@ const SocketFactory = ($window: Window, serverConfig: IServerConfig) => {
     };
 
     const emit = (key: string, value) => {
-        value = (<any>Object).assign({}, {uid: serverConfig.getUID()}, value);
+        value = (<any>Object).assign({}, {uid: serverConfigHelper.getUID()}, value);
         if( !connected) {
             queueEmit.push({key: key, value: value});
         } else {

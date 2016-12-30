@@ -1,9 +1,9 @@
 import {IServerConfig} from './../interfaces/definitions';
-const WindowError = ($rootScope, $window, serverConfig: IServerConfig) => {
+const WindowError = ($rootScope, $window, serverConfigHelper: IServerConfig) => {
 
 
     const init = () => {
-        if( serverConfig.onServer() === false) return;
+        if( serverConfigHelper.onServer() === false) return;
         const originalThrow = $window.throw;
 
         let originalErrorHandler = $window.onerror;

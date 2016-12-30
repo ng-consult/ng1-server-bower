@@ -1,6 +1,6 @@
 import {IEngineQueue, IServerConfig} from './../interfaces/definitions';
 
-const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, serverConfig: IServerConfig): IEngineQueue => {
+const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, serverConfigHelper: IServerConfig): IEngineQueue => {
 
     const doneVar = {};
 
@@ -48,11 +48,11 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
             const cachedUrls = $cacheFactory.export(cacheId);
 
             dependencies[cacheId].forEach( (cachedUrl:string) => {
-                if(serverConfig.getRestCacheEnabled()) {
+                if(serverConfigHelper.getRestCacheEnabled()) {
                     exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
                 } else {
                     //extract original URL
-                    const cacheServerURL = serverConfig.getRestServer() + '/get?url=';
+                    const cacheServerURL = serverConfigHelper.getRestServer() + '/get?url=';
 
                     if(cachedUrl.indexOf(cacheServerURL) === 0) {
                         let decodedCachedUrl = decodeURIComponent(cachedUrl.replace(cacheServerURL, ''));
@@ -78,7 +78,7 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
 
             $window['ngIdle'] = true;
 
-            if(serverConfig.onServer() === true) {
+            if(serverConfigHelper.onServer() === true) {
 
                 //todo uncomment this
                 //console.log('GOing to throw an error');
@@ -100,7 +100,7 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
                     exportedCache: getExportedCache()
                 });
 
-                socket.on('IDLE'+ serverConfig.getUID(), function() {
+                socket.on('IDLE'+ serverConfigHelper.getUID(), function() {
                     const Event = $window['Event'];
                     const dispatchEvent = $window.dispatchEvent;
                     const IdleEvent = new Event('Idle');
@@ -109,8 +109,8 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
 
                 });
             } else {
-                if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
-                    //console.log('deleting $http', serverConfig.getDefaultHttpCache());
+                if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
+                    //console.log('deleting $http', serverConfigHelper.getDefaultHttpCache());
                     $cacheFactory.delete('$http');
                 }
                 const Event = $window['Event'];

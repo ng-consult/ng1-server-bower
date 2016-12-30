@@ -1,11 +1,11 @@
 import {IServerConfig} from './../interfaces/definitions';
 
-const TemplateRequest = function ($delegate, $sce, serverConfig: IServerConfig) {
+const TemplateRequest = function ($delegate, $sce, serverConfigHelper: IServerConfig) {
 
     var $TemplateRequest = (tpl, ignoreRequestError) => {
         //console.log('Inside template request, querying ', tpl, ignoreRequestError);
 
-        const restURL = serverConfig.getRestServer();
+        const restURL = serverConfigHelper.getRestServer();
         if(restURL !== null) {
 
             if(typeof tpl === 'string') {

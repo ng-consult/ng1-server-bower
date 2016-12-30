@@ -57,29 +57,29 @@
 	var templateRequest_1 = __webpack_require__(10);
 	var windowError_1 = __webpack_require__(11);
 	angular.module('server', [])
-	    .factory('serverConfig', ['$window', serverConfig_1.default])
-	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfig', Counter_1.default])
-	    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfig', engineQueue_1.default])
-	    .factory('socket', ['$window', 'serverConfig', Socket_1.default])
-	    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfig', 'counter', httpInterceptorQueue_1.default])
-	    .factory('windowError', ['$rootScope', '$window', 'serverConfig', windowError_1.default])
+	    .factory('serverConfigHelper', ['$window', serverConfig_1.default])
+	    .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfigHelper', Counter_1.default])
+	    .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfigHelper', engineQueue_1.default])
+	    .factory('socket', ['$window', 'serverConfigHelper', Socket_1.default])
+	    .factory('httpInterceptorQueue', ['$q', '$log', 'engineQueue', 'serverConfigHelper', 'counter', httpInterceptorQueue_1.default])
+	    .factory('windowError', ['$rootScope', '$window', 'serverConfigHelper', windowError_1.default])
 	    .decorator('$exceptionHandler', ['$delegate', '$log', '$window', exceptionHandler_1.default])
 	    .decorator('$q', ['$delegate', 'counter', q2_1.default])
-	    .decorator('$log', ['$delegate', 'socket', 'serverConfig', log_1.default])
+	    .decorator('$log', ['$delegate', 'socket', 'serverConfigHelper', log_1.default])
 	    .decorator('$cacheFactory', ['$delegate', cacheFactory_1.CacheFactory])
 	    .decorator('$templateCache', ['$cacheFactory', cacheFactory_1.TemplateCache])
-	    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfig', templateRequest_1.default])
+	    .decorator('$templateRequest', ['$delegate', '$sce', 'serverConfigHelper', templateRequest_1.default])
 	    .config(function ($httpProvider) {
 	    $httpProvider.interceptors.push('httpInterceptorQueue');
 	})
-	    .run(function ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfig, counter) {
+	    .run(function ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfigHelper, counter) {
 	    windowError.init();
-	    serverConfig.init();
-	    if (serverConfig.hasRestCache()) {
-	        $cacheFactory.importAll(serverConfig.getRestCache());
+	    serverConfigHelper.init();
+	    if (serverConfigHelper.hasRestCache()) {
+	        $cacheFactory.importAll(serverConfigHelper.getRestCache());
 	        $http.defaults.cache = true;
 	    }
-	    if (serverConfig.onServer() == true) {
+	    if (serverConfigHelper.onServer() == true) {
 	        $http.defaults.cache = true;
 	        socket.init();
 	    }
@@ -95,14 +95,14 @@
 	            httpCouter.touch();
 	            qCounter.touch();
 	        });
-	    }, serverConfig.getTimeoutValue());
+	    }, serverConfigHelper.getTimeoutValue());
 	    var digestWatcher = $rootScope.$watch(function () {
 	        counter.incr('digest');
 	        $rootScope.$$postDigest(function () {
 	            counter.decr('digest');
 	        });
 	    });
-	    if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+	    if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
 	        $rootScope.$on('InternIdle', function () {
 	            $http.defaults.cache = false;
 	        });
@@ -117,7 +117,7 @@
 
 	'use strict';
 	var _this = this;
-	var HttpInterceptorQueue = function ($q, $log, engineQueue, serverConfig, counter) {
+	var HttpInterceptorQueue = function ($q, $log, engineQueue, serverConfigHelper, counter) {
 	    $log.dev('HttpInterceptor', 'instanciated', _this);
 	    var hCounter = counter.create('http');
 	    var cacheMapping = {};
@@ -125,15 +125,15 @@
 	        request: function (config) {
 	            $log.dev('before decorator -> httpRequest', config.url);
 	            hCounter.incr();
-	            var restURL = serverConfig.getRestServer();
+	            var restURL = serverConfigHelper.getRestServer();
 	            if (restURL !== null && config.url.indexOf(restURL) === -1) {
-	                if (serverConfig.onServer() || serverConfig.getRestCacheEnabled()) {
+	                if (serverConfigHelper.onServer() || serverConfigHelper.getRestCacheEnabled()) {
 	                    config.url = restURL
 	                        + '/get?url='
 	                        + encodeURIComponent(config.url);
 	                }
 	            }
-	            if (serverConfig.onServer() && window['ngIdle'] === false) {
+	            if (serverConfigHelper.onServer() && window['ngIdle'] === false) {
 	                if (config.cache) {
 	                    var cacheName = config.cache.info();
 	                    cacheMapping[config.url] = cacheName.id;
@@ -174,12 +174,12 @@
 /***/ function(module, exports) {
 
 	'use strict';
-	var logDecorator = function ($delegate, socket, serverConfig) {
-	    serverConfig.init();
+	var logDecorator = function ($delegate, socket, serverConfigHelper) {
+	    serverConfigHelper.init();
 	    var newLog = Object.create($delegate);
 	    newLog.prototype = $delegate.prototype;
 	    ['log', 'warn', 'info', 'error', 'debug'].forEach(function (item) {
-	        if (serverConfig.onServer()) {
+	        if (serverConfigHelper.onServer()) {
 	            newLog[item] = function () {
 	                var args = [];
 	                for (var _i = 0; _i < arguments.length; _i++) {
@@ -196,7 +196,7 @@
 	            newLog[item] = $delegate[item];
 	        }
 	    });
-	    if (serverConfig.getDebug() === true) {
+	    if (serverConfigHelper.getDebug() === true) {
 	        var timer_1 = Date.now();
 	        var devLog_1 = function () {
 	            var args = [];
@@ -214,7 +214,7 @@
 	            for (var _i = 0; _i < arguments.length; _i++) {
 	                args[_i - 0] = arguments[_i];
 	            }
-	            if (serverConfig.onServer()) {
+	            if (serverConfigHelper.onServer()) {
 	                newLog.dev = function () {
 	                    var args = [];
 	                    for (var _i = 0; _i < arguments.length; _i++) {
@@ -252,7 +252,7 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket, serverConfig) {
+	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket, serverConfigHelper) {
 	    var doneVar = {};
 	    var dependencies = {};
 	    var addDependency = function (url, cacheId) {
@@ -290,11 +290,11 @@
 	            exportedCache[cacheId] = {};
 	            var cachedUrls = $cacheFactory.export(cacheId);
 	            dependencies[cacheId].forEach(function (cachedUrl) {
-	                if (serverConfig.getRestCacheEnabled()) {
+	                if (serverConfigHelper.getRestCacheEnabled()) {
 	                    exportedCache[cacheId][cachedUrl] = cachedUrls[cachedUrl];
 	                }
 	                else {
-	                    var cacheServerURL = serverConfig.getRestServer() + '/get?url=';
+	                    var cacheServerURL = serverConfigHelper.getRestServer() + '/get?url=';
 	                    if (cachedUrl.indexOf(cacheServerURL) === 0) {
 	                        var decodedCachedUrl = decodeURIComponent(cachedUrl.replace(cacheServerURL, ''));
 	                        exportedCache[cacheId][decodedCachedUrl] = cachedUrls[cachedUrl];
@@ -318,7 +318,7 @@
 	        if (areDoneVarAllTrue() && $rootScope.exception === false) {
 	            isDone = true;
 	            $window['ngIdle'] = true;
-	            if (serverConfig.onServer() === true) {
+	            if (serverConfigHelper.onServer() === true) {
 	                var doctype = void 0;
 	                try {
 	                    doctype = new XMLSerializer().serializeToString(document.doctype);
@@ -333,7 +333,7 @@
 	                    url: window.location.href,
 	                    exportedCache: getExportedCache()
 	                });
-	                socket.on('IDLE' + serverConfig.getUID(), function () {
+	                socket.on('IDLE' + serverConfigHelper.getUID(), function () {
 	                    var Event = $window['Event'];
 	                    var dispatchEvent = $window.dispatchEvent;
 	                    var IdleEvent = new Event('Idle');
@@ -342,7 +342,7 @@
 	                });
 	            }
 	            else {
-	                if (serverConfig.hasRestCache() && serverConfig.getDefaultHttpCache() === false) {
+	                if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
 	                    $cacheFactory.delete('$http');
 	                }
 	                var Event_1 = $window['Event'];
@@ -429,8 +429,8 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var CounterFactory = function ($rootScope, $log, engineQueue, serverConfig) {
-	    serverConfig.init();
+	var CounterFactory = function ($rootScope, $log, engineQueue, serverConfigHelper) {
+	    serverConfigHelper.init();
 	    var counters = {};
 	    var createCounter = function (name, doneCB) {
 	        if (!doneCB) {
@@ -445,7 +445,7 @@
 	        if (typeof counters[name] !== 'undefined') {
 	            return counters[name];
 	        }
-	        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfig.getTimeoutValue(), $log);
+	        counters[name] = new Counter(name, doneCB, $rootScope, engineQueue, serverConfigHelper.getTimeoutValue(), $log);
 	        return counters[name];
 	    };
 	    var incr = function (name) {
@@ -717,8 +717,8 @@
 	            if (angular.isDefined($window['serverConfig'].httpCache)) {
 	                httpCache = $window['serverConfig'].httpCache;
 	            }
-	            if (angular.isDefined($window['serverConfig'].restCacheEnabled)) {
-	                restCacheEnabled = $window['serverConfig'].restCacheEnabled;
+	            if (angular.isDefined($window['serverConfig'].restCache)) {
+	                restCacheEnabled = $window['serverConfig'].restCache;
 	            }
 	        }
 	        if (server && (socketServer === null || uid === null)) {
@@ -791,8 +791,8 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var SocketFactory = function ($window, serverConfig) {
-	    serverConfig.init();
+	var SocketFactory = function ($window, serverConfigHelper) {
+	    serverConfigHelper.init();
 	    var socket;
 	    var queueEmit = [];
 	    var queueOn = [];
@@ -810,11 +810,11 @@
 	                }
 	                connect();
 	            };
-	            script.src = serverConfig.getSocketServer() + '/socket.io/socket.io.js';
+	            script.src = serverConfigHelper.getSocketServer() + '/socket.io/socket.io.js';
 	        }
 	    };
 	    var connect = function () {
-	        socket = window['io'].connect(serverConfig.getSocketServer() + '?token=' + serverConfig.getUID());
+	        socket = window['io'].connect(serverConfigHelper.getSocketServer() + '?token=' + serverConfigHelper.getUID());
 	        socket.on('connect', function () {
 	            connected = true;
 	            var elem;
@@ -833,7 +833,7 @@
 	        });
 	    };
 	    var emit = function (key, value) {
-	        value = Object.assign({}, { uid: serverConfig.getUID() }, value);
+	        value = Object.assign({}, { uid: serverConfigHelper.getUID() }, value);
 	        if (!connected) {
 	            queueEmit.push({ key: key, value: value });
 	        }
@@ -882,9 +882,9 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var TemplateRequest = function ($delegate, $sce, serverConfig) {
+	var TemplateRequest = function ($delegate, $sce, serverConfigHelper) {
 	    var $TemplateRequest = function (tpl, ignoreRequestError) {
-	        var restURL = serverConfig.getRestServer();
+	        var restURL = serverConfigHelper.getRestServer();
 	        if (restURL !== null) {
 	            if (typeof tpl === 'string') {
 	                tpl = $sce.trustAsResourceUrl(restURL + '/get?url=' + encodeURIComponent(tpl));
@@ -904,9 +904,9 @@
 /***/ function(module, exports) {
 
 	"use strict";
-	var WindowError = function ($rootScope, $window, serverConfig) {
+	var WindowError = function ($rootScope, $window, serverConfigHelper) {
 	    var init = function () {
-	        if (serverConfig.onServer() === false)
+	        if (serverConfigHelper.onServer() === false)
 	            return;
 	        var originalThrow = $window.throw;
 	        var originalErrorHandler = $window.onerror;
