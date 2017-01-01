@@ -23,6 +23,7 @@ export interface ICounterFactory {
 export interface IServerConfig {
     init(): void;
     hasRestCache(): boolean;
+    hasPreBoot():boolean;
     getDebug(): boolean;
     setTimeoutValue(value:number):void ;
     getTimeoutValue():number;
@@ -35,9 +36,10 @@ export interface IServerConfig {
     getUID():string;
     getSocketServer(): string;
     loadWindow(window: Window): void;
+    preBootComplete():void,
     onServer(): boolean;
 }
- 
+
 export interface ISocket {
     init(): void;
     emit(name: string, data: Object):void;

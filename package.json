@@ -17,7 +17,7 @@
     "src",
     "*.js"
   ],
-  "version": "2.0.0-beta3",
+  "version": "2.0.0-beta5",
   "license": "GLGPL v3",
   "repository": {
     "type": "git",

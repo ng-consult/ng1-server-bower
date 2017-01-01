@@ -14,7 +14,7 @@ import WindowError from './factory/windowError';
 
 angular.module('server', [])
 
-    .factory('serverConfigHelper', [ '$window', ServerConfigFactory])
+    .factory('serverConfigHelper',  ServerConfigFactory)
     .factory('counter', ['$rootScope', '$log', 'engineQueue', 'serverConfigHelper', CounterFactory])
     .factory('engineQueue', ['$log', '$rootScope', '$window', '$cacheFactory', 'socket', 'serverConfigHelper', EngineQueue])
     .factory('socket', ['$window', 'serverConfigHelper', SocketFactory])
@@ -33,9 +33,11 @@ angular.module('server', [])
     })
 
     .run( ($rootScope, socket, $log, $timeout, $http, $cacheFactory, windowError, serverConfigHelper: IServerConfig, counter: ICounterFactory) => {
+        
 
         windowError.init();
         serverConfigHelper.init();
+
 
         if(serverConfigHelper.hasRestCache()) {
             $cacheFactory.importAll(serverConfigHelper.getRestCache());
@@ -48,7 +50,9 @@ angular.module('server', [])
         }
 
         const httpCouter = counter.create('http');
+
         const qCounter = counter.create('q');
+
         const digestCounter = counter.create('digest', ()=> {
             $log.dev('run', 'digestWatcher cleanup', digestWatcher);
             digestWatcher();
@@ -70,12 +74,17 @@ angular.module('server', [])
             });
         });
 
-
-        if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
-            $rootScope.$on('InternIdle', function() {
+        $rootScope.$on('InternIdle', function() {
+            if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
                 $http.defaults.cache = false;
-            });
-        };
+            }
+            if(serverConfigHelper.hasPreBoot()) {
+                console.log('PREBOOT EXECUTED');
+                serverConfigHelper.preBootComplete();
+            }
+        });
+
+
 
     });
 

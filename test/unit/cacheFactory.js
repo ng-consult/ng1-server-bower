@@ -5,15 +5,14 @@ describe("cache Factory Decorator - window.onServer = true", function () {
     var uid = 123;
 
     beforeEach(function() {
-        be.server('server', {serverConfig: {uid: uid}});
+        be.server('server', {ServerConfig: {uid: uid}});
         be.injectServer();
     });
 
-
     it('$window.$cacheFactoryProvider should  be set', function() {
-        expect(serverConfig.hasRestCache()).eql(false);
-    });
 
+        expect(serverConfigHelper.hasRestCache()).eql(false);
+    });
 
     describe('The original cache works ok', function() {
 

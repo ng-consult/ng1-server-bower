@@ -1,5 +1,5 @@
 
-const ServerConfigFactory = ($window: Window)  => {
+const ServerConfigFactory = ()  => {
 
     let initialized: boolean = false;
 
@@ -15,45 +15,45 @@ const ServerConfigFactory = ($window: Window)  => {
 
     //initialize
     const init = (): void => {
-        //console.log($window['serverConfig']);
+        //console.log(window['serverConfig']);
 
         if (initialized) return;
         initialized = true;
-        if(angular.isDefined($window['onServer']) && $window['onServer'] === true) {
+        if(angular.isDefined(window['onServer']) && window['onServer'] === true) {
             server = true;
         }
-        if (angular.isDefined($window['serverConfig'])) {
-            if(angular.isDefined($window['serverConfig'].clientTimeoutValue)) {
-                timeoutValue = $window['serverConfig'].clientTimeoutValue;
+        if (angular.isDefined(window['ServerConfig'])) {
+            if(angular.isDefined(window['ServerConfig'].clientTimeoutValue)) {
+                timeoutValue = window['ServerConfig'].clientTimeoutValue;
             }
-            if(angular.isDefined( $window['serverConfig'].restServerURL)) {
-                restServer = $window['serverConfig'].restServerURL;
+            if(angular.isDefined( window['ServerConfig'].restServerURL)) {
+                restServer = window['ServerConfig'].restServerURL;
             }
-            if(angular.isDefined( $window['serverConfig'].uid)) {
-                uid = $window['serverConfig'].uid;
+            if(angular.isDefined( window['ServerConfig'].uid)) {
+                uid = window['ServerConfig'].uid;
             }
-            if(angular.isDefined( $window['serverConfig'].socketServerURL)) {
-                socketServer = $window['serverConfig'].socketServerURL;
+            if(angular.isDefined( window['ServerConfig'].socketServerURL)) {
+                socketServer = window['ServerConfig'].socketServerURL;
             }
-            if(angular.isDefined( $window['ngServerCache'])) {
-                restCache = $window['ngServerCache'];
+            if(angular.isDefined( window['ngServerCache'])) {
+                restCache = window['ngServerCache'];
             }
-            if(angular.isDefined( $window['serverConfig'].debug)) {
-                debug = $window['serverConfig'].debug;
+            if(angular.isDefined( window['ServerConfig'].debug)) {
+                debug = window['ServerConfig'].debug;
             }
-            if(angular.isDefined( $window['serverConfig'].httpCache)) {
-                //console.log('LOADING HTTPCACHE ', $window['serverConfig']);
-                httpCache = $window['serverConfig'].httpCache;
+            if(angular.isDefined( window['ServerConfig'].httpCache)) {
+                //console.log('LOADING HTTPCACHE ', window['ServerConfig']);
+                httpCache = window['ServerConfig'].httpCache;
             }
-            if(angular.isDefined( $window['serverConfig'].restCache)) {
-                restCacheEnabled = $window['serverConfig'].restCache;
+            if(angular.isDefined( window['ServerConfig'].restCache)) {
+                restCacheEnabled = window['ServerConfig'].restCache;
             }
         }
 
         //Some validation:
 
         if ( server && ( socketServer === null || /*restServer === null ||*/ uid === null) ) {
-            console.error($window['serverConfig']);
+            console.error(JSON.stringify(window['ServerConfig']));
             throw new Error('invalid serverConfig: uid, socketServer missing ');
         }
     };
@@ -61,40 +61,63 @@ const ServerConfigFactory = ($window: Window)  => {
     const hasRestCache = (): boolean => {
         return restCache !== null;
     };
+
+    const hasPreBoot = (): boolean => {
+        return typeof window['preboot'] !== 'undefined'
+            && typeof window['preboot'].complete === 'function'
+            && onServer() === false
+            && typeof window['prebootstrap'] === 'function';
+    };
+
+    const preBootComplete = (): void => {
+        window['preboot'].complete();
+    };
+
     const onServer = (): boolean => {
         return server;
     };
+
     const getDebug = (): boolean => {
         return debug;
     };
+
     const getDefaultHttpCache = ():boolean => {
         return httpCache;
     };
+
     const getRestCacheEnabled = ():boolean => {
         return restCacheEnabled;
     };
+
     const getRestServer = ():string => {
         return restServer;
     };
+
     const getSocketServer = (): string => {
         return socketServer;
     };
+
     const getTimeoutValue = ():number => {
         return timeoutValue;
     };
+
     const getUID = ():string => {
         return uid;
     };
+
     const getRestCache = (): boolean => {
         return restCache;
     };
+
     //Setters
     const setDefaultHtpCache = (value:boolean):void => {
         httpCache = value;
     };
+
     const setRestServer = (value:string):void => {
         restServer = value;
     };
+
     const setTimeoutValue = (value:number):void => {
         timeoutValue = value;
     };
@@ -102,6 +125,7 @@ const ServerConfigFactory = ($window: Window)  => {
     return {
         init,
         hasRestCache,
+        hasPreBoot,
         onServer,
         getDebug,
         getDefaultHttpCache,
@@ -113,7 +137,8 @@ const ServerConfigFactory = ($window: Window)  => {
         getUID,
         setDefaultHtpCache,
         setRestServer,
-        setTimeoutValue
+        setTimeoutValue,
+        preBootComplete
     };
 }
 

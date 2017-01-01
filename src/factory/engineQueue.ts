@@ -3,17 +3,18 @@ import {IEngineQueue, IServerConfig} from './../interfaces/definitions';
 const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, serverConfigHelper: IServerConfig): IEngineQueue => {
 
     const doneVar = {};
-
+    let isDone = false;
     const dependencies = {};
+    $window['ngIdle'] = false;
+    $rootScope.exception = false;
+
+
     const addDependency = (url: string, cacheId: string) => {
         if(typeof dependencies[cacheId] === 'undefined') {
             dependencies[cacheId] = [];
         }
         dependencies[cacheId].push(url);
     };
-
-    $window['ngIdle'] = false;
-    $rootScope.exception = false;
 
     //makes sure that when an exception occurs, the IDLE state is NOT triggered
     $window.addEventListener('ExceptionHandler', () => {
@@ -31,7 +32,7 @@ const EngineQueue = ($log, $rootScope, $window: Window, $cacheFactory, socket, s
         }
     };
 
-    let isDone = false;
+
 
     const areDoneVarAllTrue = (): boolean => {
         for(var key in doneVar) {
