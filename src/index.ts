@@ -71,11 +71,17 @@ angular.module('server', [])
         });
 
 
-        if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
-            $rootScope.$on('InternIdle', function() {
+        $rootScope.$on('InternIdle', function() {
+            if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
                 $http.defaults.cache = false;
-            });
-        };
+            }
+            if(serverConfigHelper.hasPreBoot()) {
+                console.log('PREBOOT EXECUTED');
+                serverConfigHelper.preBootComplete();
+            }
+        });
+
+
 
     });
 

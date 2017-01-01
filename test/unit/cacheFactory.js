@@ -11,7 +11,7 @@ describe("cache Factory Decorator - window.onServer = true", function () {
 
 
     it('$window.$cacheFactoryProvider should  be set', function() {
-        expect(serverConfig.hasRestCache()).eql(false);
+        expect(serverConfigHelper.hasRestCache()).eql(false);
     });
 
 

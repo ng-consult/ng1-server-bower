@@ -19,20 +19,20 @@ describe("Server-side enabled - mock.module('test')", function () {
                 expect(event).to.be.defined;
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue() );
+            $timeout.flush(serverConfigHelper.getTimeoutValue() );
         });
 
         describe('serverConfig', function() {
 
             it('It detects that we are on server', function() {
-                expect(serverConfig.onServer()).eql(true);
+                expect(serverConfigHelper.onServer()).eql(true);
             });
 
 
             it('Gets the correct uid, socketServerURL, restServerURL URLs', function() {
-                expect(serverConfig.getUID()).eql(uid);
-                expect(serverConfig.getRestServer()).eql(restServerURL);
-                expect(serverConfig.getSocketServer()).eql(socketServerURL);
+                expect(serverConfigHelper.getUID()).eql(uid);
+                expect(serverConfigHelper.getRestServer()).eql(restServerURL);
+                expect(serverConfigHelper.getSocketServer()).eql(socketServerURL);
             });
 
         });
@@ -73,7 +73,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     resolved = true;
                 });
 
-                $timeout.flush(serverConfig.getTimeoutValue());
+                $timeout.flush(serverConfigHelper.getTimeoutValue());
 
                 expect(resolved).to.eql(false);
 
@@ -110,7 +110,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                 var resolved = false;
                 var rejected = false;
 
-                serverConfig.setTimeoutValue(400);
+                serverConfigHelper.setTimeoutValue(400);
 
                 window.addEventListener('Idle', function () {
                     expect(resolved).to.be.not.ok;
@@ -132,7 +132,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                     rejected = true;
                 });
 
-                $timeout.flush(serverConfig.getTimeoutValue());
+                $timeout.flush(serverConfigHelper.getTimeoutValue());
 
                 expect(resolved).to.be.not.ok;
                 expect(rejected).to.be.not.ok;
@@ -172,7 +172,7 @@ describe("Server-side enabled - mock.module('test')", function () {
                 });
 
 
-                $timeout.flush(serverConfig.getTimeoutValue());
+                $timeout.flush(serverConfigHelper.getTimeoutValue());
 
 
             });

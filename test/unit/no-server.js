@@ -28,7 +28,7 @@ describe("No Server side definition", function () {
 
             expect(ctrl.item).to.eql('text');
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
 
         it('It should throw an Idle Event', function(done) {
@@ -42,7 +42,7 @@ describe("No Server side definition", function () {
                 done();
             });
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
 
         });
     });
@@ -58,11 +58,11 @@ describe("No Server side definition", function () {
                 expect(event).to.not.be.undefined;
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
 
         it('Idle event should be thrown with a timeoutValue of 2000' , function(done) {
-            serverConfig.setTimeoutValue(2000);
+            serverConfigHelper.setTimeoutValue(2000);
             var idleCaught = false;
             window.addEventListener('Idle', function (event) {
                 expect(event).to.not.be.undefined;
@@ -97,8 +97,8 @@ describe("No Server side definition", function () {
         });
 
         it('Should get the timeoutValue from the window.clientTimeoutValue', function() {
-            expect(serverConfig.getTimeoutValue()).to.eql(500);
-            $timeout.flush(serverConfig.getTimeoutValue());
+            expect(serverConfigHelper.getTimeoutValue()).to.eql(500);
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
 
         });
     });
@@ -144,7 +144,7 @@ describe("No Server side definition", function () {
             be.global();
             be.noServer('server', {serverConfig: {debug: true}});
             be.injectNoServer();
-            serverConfig.init();
+            serverConfigHelper.init();
         });
 
         var msg = 'test';
@@ -216,7 +216,7 @@ describe("No Server side definition", function () {
             $httpBackend.flush();
             expect(ctrl.list).to.eql(jsonValue);
 
-            $timeout.flush(serverConfig.getTimeoutValue() );
+            $timeout.flush(serverConfigHelper.getTimeoutValue() );
         });
 
         it('The template should load OK trough the REST URL', function() {
@@ -236,7 +236,7 @@ describe("No Server side definition", function () {
 
     });
 
-    describe('With REST URL defined & restCacheEnabled = true', function() {
+    describe('With REST URL defined & restCache = true', function() {
 
         var app = angular.module('appNoServerREST', ['server']).component('appComponent', {
             templateUrl: "template.html",
@@ -257,7 +257,7 @@ describe("No Server side definition", function () {
             be.global();
             be.noServer('appNoServerREST', {
                 serverConfig: {
-                    restCacheEnabled: true,
+                    restCache: true,
                     restServerURL: restURL
                 }
             });
@@ -280,7 +280,7 @@ describe("No Server side definition", function () {
             $httpBackend.when('GET', restURL + '/get?url=' + encodeURIComponent('something.json')).respond(200, jsonValue);
             $httpBackend.flush();
 
-            $timeout.flush(serverConfig.getTimeoutValue() );
+            $timeout.flush(serverConfigHelper.getTimeoutValue() );
         });
 
         it('$http loads the JSON URL trough the REST cache proxy', function() {

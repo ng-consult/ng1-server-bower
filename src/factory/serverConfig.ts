@@ -61,47 +61,71 @@ const ServerConfigFactory = ($window: Window)  => {
     const hasRestCache = (): boolean => {
         return restCache !== null;
     };
+
+    const hasPreBoot = (): boolean => {
+        return typeof $window['preboot'] !== 'undefined'
+            && typeof $window['preboot'].complete === 'function'
+            && onServer() === false
+            && typeof $window['prebootstrap'] === 'function';
+    };
+
+    const preBootComplete = (): void => {
+        $window['preboot'].complete();
+    };
+
     const onServer = (): boolean => {
         return server;
     };
+
     const getDebug = (): boolean => {
         return debug;
     };
+
     const getDefaultHttpCache = ():boolean => {
         return httpCache;
     };
+
     const getRestCacheEnabled = ():boolean => {
         return restCacheEnabled;
     };
+
     const getRestServer = ():string => {
         return restServer;
     };
+
     const getSocketServer = (): string => {
         return socketServer;
     };
+
     const getTimeoutValue = ():number => {
         return timeoutValue;
     };
+
     const getUID = ():string => {
         return uid;
     };
+
     const getRestCache = (): boolean => {
         return restCache;
     };
+
     //Setters
     const setDefaultHtpCache = (value:boolean):void => {
         httpCache = value;
     };
+
     const setRestServer = (value:string):void => {
         restServer = value;
     };
+
     const setTimeoutValue = (value:number):void => {
         timeoutValue = value;
     };
-
+    
     return {
         init,
         hasRestCache,
+        hasPreBoot,
         onServer,
         getDebug,
         getDefaultHttpCache,
@@ -113,7 +137,8 @@ const ServerConfigFactory = ($window: Window)  => {
         getUID,
         setDefaultHtpCache,
         setRestServer,
-        setTimeoutValue
+        setTimeoutValue,
+        preBootComplete
     };
 }
 

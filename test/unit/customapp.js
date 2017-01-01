@@ -41,7 +41,7 @@ describe('Server side Enabled - Custom app definition - IDLE  event testing', fu
 
             modelChanged = true;
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
 
         });
 
@@ -57,7 +57,7 @@ describe('Server side Enabled - Custom app definition - IDLE  event testing', fu
             var ctrl = $componentController('appComponent');
 
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
 
             for (var i = 0; i < 1000; i++) {
                 ctrl.item = 'changed' + i;
@@ -171,11 +171,11 @@ describe('Server side Enabled - Custom app definition - IDLE  event testing', fu
                 expect(ctrl.list.length).to.eql(window.bigJSON.length);
             }, 1000);
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
 
             expect(ctrl.list.length).to.eql(0);
 
-            $timeout.flush(1000 - serverConfig.getTimeoutValue());
+            $timeout.flush(1000 - serverConfigHelper.getTimeoutValue());
         });
 
     });
@@ -216,7 +216,7 @@ describe('Server side Enabled - Custom app definition - IDLE  event testing', fu
 
             var ctrl = $componentController('appComponent');
 
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
             ctrl.bigFilter();
 
         })

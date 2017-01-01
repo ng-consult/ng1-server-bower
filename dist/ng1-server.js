@@ -102,12 +102,15 @@
 	            counter.decr('digest');
 	        });
 	    });
-	    if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
-	        $rootScope.$on('InternIdle', function () {
+	    $rootScope.$on('InternIdle', function () {
+	        if (serverConfigHelper.hasRestCache() && serverConfigHelper.getDefaultHttpCache() === false) {
 	            $http.defaults.cache = false;
-	        });
-	    }
-	    ;
+	        }
+	        if (serverConfigHelper.hasPreBoot()) {
+	            console.log('PREBOOT EXECUTED');
+	            serverConfigHelper.preBootComplete();
+	        }
+	    });
 	});
 
 
@@ -254,15 +257,16 @@
 	"use strict";
 	var EngineQueue = function ($log, $rootScope, $window, $cacheFactory, socket, serverConfigHelper) {
 	    var doneVar = {};
+	    var isDone = false;
 	    var dependencies = {};
+	    $window['ngIdle'] = false;
+	    $rootScope.exception = false;
 	    var addDependency = function (url, cacheId) {
 	        if (typeof dependencies[cacheId] === 'undefined') {
 	            dependencies[cacheId] = [];
 	        }
 	        dependencies[cacheId].push(url);
 	    };
-	    $window['ngIdle'] = false;
-	    $rootScope.exception = false;
 	    $window.addEventListener('ExceptionHandler', function () {
 	        $rootScope.exception = true;
 	    });
@@ -275,7 +279,6 @@
 	            done(name);
 	        }
 	    };
-	    var isDone = false;
 	    var areDoneVarAllTrue = function () {
 	        for (var key in doneVar) {
 	            if (!doneVar[key]) {
@@ -729,6 +732,15 @@
 	    var hasRestCache = function () {
 	        return restCache !== null;
 	    };
+	    var hasPreBoot = function () {
+	        return typeof $window['preboot'] !== 'undefined'
+	            && typeof $window['preboot'].complete === 'function'
+	            && onServer() === false
+	            && typeof $window['prebootstrap'] === 'function';
+	    };
+	    var preBootComplete = function () {
+	        $window['preboot'].complete();
+	    };
 	    var onServer = function () {
 	        return server;
 	    };
@@ -768,6 +780,7 @@
 	    return {
 	        init: init,
 	        hasRestCache: hasRestCache,
+	        hasPreBoot: hasPreBoot,
 	        onServer: onServer,
 	        getDebug: getDebug,
 	        getDefaultHttpCache: getDefaultHttpCache,
@@ -779,7 +792,8 @@
 	        getUID: getUID,
 	        setDefaultHtpCache: setDefaultHtpCache,
 	        setRestServer: setRestServer,
-	        setTimeoutValue: setTimeoutValue
+	        setTimeoutValue: setTimeoutValue,
+	        preBootComplete: preBootComplete
 	    };
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });

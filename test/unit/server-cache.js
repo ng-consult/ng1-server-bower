@@ -11,11 +11,11 @@ describe("cache Factory Decorator - window.onServer = false, no data to import",
         $rootScope.$on('InternIdle', function() {
             done();
         });
-        $timeout.flush(serverConfig.getTimeoutValue());
+        $timeout.flush(serverConfigHelper.getTimeoutValue());
     });
 
-    it('serverConfig.hasRestCache() should be false.', function() {
-        expect(serverConfig.hasRestCache()).eql(false);
+    it('serverConfigHelper.hasRestCache() should be false.', function() {
+        expect(serverConfigHelper.hasRestCache()).eql(false);
     });
 
 });
@@ -35,7 +35,7 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
                 ngServerCache: data,
                 serverConfig: {
                     httpCache: true,
-                    restCacheEnabled: false
+                    restCache: false
                 }
             });
             be.injectServer();
@@ -45,15 +45,15 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
             $rootScope.$on('InternIdle', function() {
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
 
-        it('serverConfig.hasRestCache() should be true.', function() {
-            expect(serverConfig.hasRestCache()).eql(true);
+        it('serverConfigHelper.hasRestCache() should be true.', function() {
+            expect(serverConfigHelper.hasRestCache()).eql(true);
         });
 
-        it('serverConfig.getRestCacheEnabled() should be false.', function() {
-            expect(serverConfig.getRestCacheEnabled()).eql(false);
+        it('serverConfigHelper.getRestCacheEnabled() should be false.', function() {
+            expect(serverConfigHelper.getRestCacheEnabled()).eql(false);
         });
 
         it('The cacheFactory should have had imported the cached data', function() {
@@ -65,7 +65,7 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
                 expect($cacheFactory.exportAll()).eql(data);
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
 
     });
@@ -77,7 +77,7 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
                 ngServerCache: data,
                 serverConfig: {
                     httpCache: false,
-                    restCacheEnabled: false
+                    restCache: false
                 }
             });
             be.injectServer();
@@ -89,19 +89,19 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
             $rootScope.$on('InternIdle', function() {
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
 
-        it('serverConfig.hasRestCache() should be true.', function() {
-            expect(serverConfig.hasRestCache()).eql(true);
+        it('serverConfigHelper.hasRestCache() should be true.', function() {
+            expect(serverConfigHelper.hasRestCache()).eql(true);
         });
 
         it('The cacheFactory should have had imported the cached data', function() {
             expect($cacheFactory.exportAll()).eql(data);
         });
 
-        it('serverConfig.getRestCacheEnabled() should be false.', function() {
-            expect(serverConfig.getRestCacheEnabled()).eql(false);
+        it('serverConfigHelper.getRestCacheEnabled() should be false.', function() {
+            expect(serverConfigHelper.getRestCacheEnabled()).eql(false);
         });
 
         it('After IDLE, the cache data should be empty', function(done) {
@@ -109,7 +109,7 @@ describe("cache Factory Decorator - window.onServer = false, cache data to impor
                 expect($cacheFactory.exportAll()).eql({});
                 done();
             });
-            $timeout.flush(serverConfig.getTimeoutValue());
+            $timeout.flush(serverConfigHelper.getTimeoutValue());
         });
     });
 

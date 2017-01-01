@@ -51,7 +51,7 @@ var before = function (global) {
                 .split(',').filter(Boolean); // split & filter [""]
         },
         injectServer: function () {
-            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$cacheFactory_, _socket_, _serverConfig_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_) {
+            var fn = function(_$timeout_, _$componentController_, _$httpBackend_, _$cacheFactory_, _socket_, _serverConfigHelper_, _$rootScope_, _counter_, _$q_, _$log_, _$exceptionHandler_, _$filter_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');
@@ -63,7 +63,7 @@ var before = function (global) {
             return global.angular.mock.inject.apply(global, [fn]);
         },
         injectNoServer: function () {
-            var fn = function(_$componentController_, _$httpBackend_, _$compile_, _$rootScope_, _$log_,  _$timeout_, _serverConfig_) {
+            var fn = function(_$componentController_, _$httpBackend_, _$compile_, _$rootScope_, _$log_,  _$timeout_, _serverConfigHelper_) {
                 var i, tmp;
                 for(i in arguments) {
                     tmp = myargs[i].replace(/^_/, '').replace(/_$/, '');
